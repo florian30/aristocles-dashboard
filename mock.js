@@ -133,7 +133,9 @@
   ];
 
   // [joursAvantAujourdhui, heure, childId, mode, duréeMin, transcriptIdx]
+  // duréeMin null = session encore ouverte (comme côté serveur).
   const SESSION_SEEDS = [
+    [0,  '18:05', 'c5', 'entrainement', null, 4],
     [0,  '17:40', 'c1', 'entrainement', 18, 0],
     [0,  '10:05', 'c2', 'devoirs',      14, 1],
     [1,  '18:15', 'c3', 'entrainement', 22, 2],
@@ -175,7 +177,8 @@
       date: isoDaysAgo(daysAgo),
       time,
       mode, // 'entrainement' | 'devoirs'
-      durationMin,
+      status: durationMin == null ? 'open' : 'closed',
+      durationMin, // null = session ouverte
       timeline,
     };
   });
