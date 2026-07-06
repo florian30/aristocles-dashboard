@@ -98,6 +98,47 @@
     return words.charAt(0).toUpperCase() + words.slice(1);
   }
 
+  // Libellés français des primitives visuelles (catalogue proto) ;
+  // à défaut le slug brut reste lisible.
+  const PRIMITIVE_LABEL = {
+    clock: 'Horloge',
+    number_line: 'Droite graduée',
+    fraction_bar: 'Barre de fractions',
+    fraction_model: 'Modèle de fraction',
+    coordinate_grid: 'Grille de coordonnées',
+    highlighted_text: 'Texte surligné',
+    highlighted_number: 'Nombres mis en évidence',
+    labeled_shape: 'Figure légendée',
+    value_table: 'Tableau de valeurs',
+    bar_chart: 'Diagramme en barres',
+    polygon_grid: 'Polygone sur grille',
+    sharing: 'Partage',
+    symmetry_figure: 'Figure symétrique',
+    relation_map: 'Schéma de relations',
+    choice_tree: 'Arbre de choix',
+    word_boxes: 'Boîtes de mots',
+    conjugation_table: 'Tableau de conjugaison',
+    timeline: 'Frise chronologique',
+  };
+
+  // Le visuel arrive en jsonb brut { primitive, params } (ou une liste
+  // de visuels) : on le rend lisible sans prétendre à une description
+  // pédagogique. Une chaîne passe telle quelle (parité mode démo).
+  function describeVisual(visual) {
+    if (!visual) return null;
+    if (typeof visual === 'string') return visual || null;
+    if (Array.isArray(visual)) {
+      const parts = visual.map(describeVisual).filter(Boolean);
+      return parts.length ? parts.join(' · ') : null;
+    }
+    if (!visual.primitive) return null;
+    const label = PRIMITIVE_LABEL[visual.primitive] || visual.primitive;
+    const params = Object.entries(visual.params || {})
+      .map(([k, v]) => k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v))
+      .join(', ');
+    return params ? label + ' — ' + params : label;
+  }
+
   function toMinutes(seconds) {
     return seconds == null ? null : Math.round(seconds / 60);
   }
@@ -192,12 +233,12 @@
           item: {
             type: 'exercise',
             exerciseId: r.exercise_id,
-            notion: conceptLabel(r.concept_id),
+            notion: r.concept_label || conceptLabel(r.concept_id),
             level: s.grade,
             attempts: r.attempts_count,
             success: r.success,
-            statement: null,
-            visual: null,
+            statement: r.statement || null,
+            visual: describeVisual(r.visual),
           },
         });
       }
@@ -208,7 +249,7 @@
             at,
             item: {
               type: 'mastery',
-              notion: conceptLabel(a.concept_id),
+              notion: a.concept_label || conceptLabel(a.concept_id),
               from: null, // la fonction n'expose pas l'ancien statut
               to: MASTERY_LABEL[a.status] || a.status,
             },
