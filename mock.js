@@ -1,139 +1,181 @@
 /* ============================================================
    Aristocles — Données factices (suivi des testeurs)
-   Consommées uniquement par api.js. Les dates sont générées
-   relativement à aujourd'hui pour que les filtres temporels
-   restent pertinents quel que soit le jour d'ouverture.
+   Consommées uniquement par api.js, dans les formes de retour
+   de la page (schéma socle : écrans + synthèses, bilan de
+   séance, acquisitions, coûts LLM — jamais de verbatim).
+   Les dates sont générées relativement à aujourd'hui pour que
+   les filtres temporels restent pertinents quel que soit le
+   jour d'ouverture.
    ============================================================ */
 (function () {
   'use strict';
 
   const CHILDREN = [
-    { id: 'c1', name: 'Lina' },
-    { id: 'c2', name: 'Maël' },
-    { id: 'c3', name: 'Adam' },
-    { id: 'c4', name: 'Chiara' },
-    { id: 'c5', name: 'Nina' },
-    { id: 'c6', name: 'Sacha' },
-    { id: 'c7', name: 'Léon' },
+    { id: 'c1', name: 'Lina', classe: 'CM1' },
+    { id: 'c2', name: 'Maël', classe: 'CM1' },
+    { id: 'c3', name: 'Adam', classe: 'CM1' },
+    { id: 'c4', name: 'Chiara', classe: 'CM1' },
+    { id: 'c5', name: 'Nina', classe: 'CM1' },
+    { id: 'c6', name: 'Sacha', classe: 'CM1' },
+    { id: 'c7', name: 'Léon', classe: 'CM1' },
   ];
 
-  // Éléments de fil chronologique :
-  //   { type: 'ari',      text }
-  //   { type: 'child',    text }
-  //   { type: 'exercise', exerciseId, notion, level, attempts, success, statement, visual }
-  //   { type: 'mastery',  notion, from, to }
+  // Scénarios de séance : thème, notion principale, bilan rédigé et
+  // suite d'écrans avec leur synthèse (valeurs socle brutes pour type,
+  // statutFermeture, pouce, resultat, origine — libellés dans app.js).
   // "{name}" est remplacé par le prénom de l'enfant à la construction.
-  const TRANSCRIPTS = [
+  const SCENARIOS = [
     // 0 — Les fractions (entraînement)
-    [
-      { type: 'ari', text: "Salut {name}. On continue sur les fractions aujourd'hui. Tu te souviens de ce qu'on a vu la dernière fois ?" },
-      { type: 'child', text: "Oui, les parts. 3/4 c'est trois parts sur quatre." },
-      { type: 'ari', text: "Exactement. Alors dis-moi : si je partage une tarte en quatre parts égales et que j'en mange trois, quelle fraction reste-t-il ?" },
-      { type: 'child', text: "Il reste une part… donc 1/4." },
-      { type: 'exercise', exerciseId: 'EX-1042', notion: 'Les fractions', level: 'CM1', attempts: 1, success: true,
-        statement: "Une tarte est partagée en 4 parts égales. J'en mange 3. Quelle fraction de la tarte reste-t-il ?",
-        visual: "Un disque découpé en quatre parts égales, dont trois sont grisées." },
-      { type: 'ari', text: "Bien vu. Maintenant, une question plus difficile : entre 2/3 et 3/4, laquelle est la plus grande ?" },
-      { type: 'child', text: "2/3, parce que 2 et 3 sont plus petits." },
-      { type: 'ari', text: "Intéressant. Qu'est-ce qui compte le plus : la taille des nombres, ou la taille des parts ? Essaie de mettre les deux fractions sur le même dénominateur." },
-      { type: 'child', text: "Euh… 2/3 ça fait 8/12 et 3/4 ça fait 9/12." },
-      { type: 'ari', text: "Alors, laquelle est la plus grande ?" },
-      { type: 'child', text: "3/4 !" },
-      { type: 'exercise', exerciseId: 'EX-1043', notion: 'Comparaison de fractions', level: 'CM1', attempts: 2, success: true,
-        statement: "Range les fractions 2/3 et 3/4 de la plus petite à la plus grande. Justifie en les mettant au même dénominateur.",
-        visual: "Deux barres de même longueur, l'une partagée en trois parts, l'autre en quatre." },
-      { type: 'mastery', notion: 'Les fractions', from: 'En cours', to: 'Acquis' },
-      { type: 'ari', text: "Tu as buté au départ, c'est normal — comparer des fractions demande de passer par le même dénominateur. Tu l'as trouvé sans aide." },
-      { type: 'child', text: "C'était pas si dur en fait." },
-      { type: 'ari', text: "On garde cette méthode pour demain. Un dernier exercice pour finir ?" },
-      { type: 'child', text: "D'accord." },
-      { type: 'exercise', exerciseId: 'EX-1044', notion: 'Fractions et droite graduée', level: 'CM1', attempts: 3, success: false,
-        statement: "Place la fraction 5/4 sur la droite graduée.",
-        visual: "Une droite graduée de 0 à 2, graduée en quarts, avec un curseur déplaçable." },
-      { type: 'ari', text: "Celui-ci résiste encore. On le reprendra au début de la prochaine séance." },
-    ],
+    {
+      theme: 'Les fractions',
+      notion: 'Les fractions',
+      resume: "Séance solide sur les fractions. {name} mobilise bien la notion de parts et compare désormais deux fractions en passant par le même dénominateur — la méthode a été trouvée sans aide après une première réponse fondée sur la taille des nombres. Le placement d'une fraction supérieure à 1 sur la droite graduée résiste encore : à reprendre en début de prochaine séance.",
+      ecrans: [
+        {
+          position: 1, type: 'vue_ensemble', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Rappel des acquis sur les parts : {name} restitue sans aide que 3/4 correspond à trois parts sur quatre.",
+          exercices: [],
+        },
+        {
+          position: 2, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Partage d'une tarte en quarts : la fraction restante est trouvée du premier coup, avec une justification correcte.",
+          exercices: [
+            { id: 'xr-101', enonce: "Une tarte est partagée en 4 parts égales. J'en mange 3. Quelle fraction de la tarte reste-t-il ?",
+              resultat: 'succes', origine: 'entrainement_complementaire', dureeSec: 45, notions: ['Les fractions'] },
+          ],
+        },
+        {
+          position: 3, type: 'exercice', statutFermeture: 'resolu_fragile', pouce: null,
+          synthese: "Comparaison de 2/3 et 3/4 : première réponse fondée sur la taille des nombres, puis passage au même dénominateur trouvé seul. La méthode est comprise mais pas encore automatique.",
+          exercices: [
+            { id: 'xr-102', enonce: "Range les fractions 2/3 et 3/4 de la plus petite à la plus grande. Justifie en les mettant au même dénominateur.",
+              resultat: 'fragile', origine: 'entrainement_complementaire', dureeSec: 130, notions: ['Comparaison de fractions'] },
+          ],
+        },
+        {
+          position: 4, type: 'exercice', statutFermeture: 'abandon', pouce: null,
+          synthese: "Placement de 5/4 sur la droite graduée : trois tentatives sans stabiliser la position. L'écran a été refermé pour ne pas décourager — à reprendre.",
+          exercices: [
+            { id: 'xr-103', enonce: "Place la fraction 5/4 sur la droite graduée.",
+              resultat: 'abandon', origine: 'entrainement_complementaire', dureeSec: 185, notions: ['Fractions et droite graduée'] },
+          ],
+        },
+      ],
+    },
     // 1 — L'accord du participe passé (devoirs)
-    [
-      { type: 'ari', text: "Bonjour {name}. Tu as des devoirs de français aujourd'hui. On regarde la première phrase ensemble ?" },
-      { type: 'child', text: "« Les lettres que j'ai écrit »… écrite ? écrites ?" },
-      { type: 'ari', text: "Bonne question. Avec l'auxiliaire avoir, quand est-ce qu'on accorde le participe passé ?" },
-      { type: 'child', text: "Quand le COD est avant le verbe ?" },
-      { type: 'ari', text: "Oui. Alors ici, quel est le COD, et où est-il ?" },
-      { type: 'child', text: "« les lettres »… avant le verbe. Donc « écrites »." },
-      { type: 'exercise', exerciseId: 'EX-2210', notion: "L'accord du participe passé", level: 'CM1', attempts: 1, success: true,
-        statement: "Complète en accordant le participe passé si nécessaire : « Les lettres que j'ai (écrire) … sont sur la table. »",
-        visual: null },
-      { type: 'ari', text: "Exactement. Essayons une autre : « Elles ont mangé une pomme. »" },
-      { type: 'child', text: "Mangées ?" },
-      { type: 'ari', text: "Où est le COD dans cette phrase ?" },
-      { type: 'child', text: "« une pomme », après le verbe… donc « mangé », sans accord." },
-      { type: 'exercise', exerciseId: 'EX-2211', notion: "L'accord du participe passé", level: 'CM1', attempts: 2, success: true,
-        statement: "Complète en accordant le participe passé si nécessaire : « Elles ont (manger) … une pomme. »",
-        visual: null },
-      { type: 'mastery', notion: "L'accord du participe passé", from: 'Fragile', to: 'En cours' },
-      { type: 'ari', text: "Tu progresses. La règle commence à tenir toute seule." },
-    ],
+    {
+      theme: "L'accord du participe passé",
+      notion: "L'accord du participe passé",
+      resume: "Devoirs de français traités en entier. {name} applique la règle de l'accord avec avoir en repérant la position du COD — d'abord avec un guidage, puis seul(e) sur la seconde phrase. La règle commence à tenir sans rappel.",
+      ecrans: [
+        {
+          position: 1, type: 'captation', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Devoirs photographiés : deux phrases à compléter sur l'accord du participe passé avec l'auxiliaire avoir.",
+          exercices: [],
+        },
+        {
+          position: 2, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Première phrase : le COD « les lettres » est repéré avant le verbe, accord « écrites » justifié correctement après un rappel de la règle.",
+          exercices: [
+            { id: 'xr-201', enonce: "Complète en accordant le participe passé si nécessaire : « Les lettres que j'ai (écrire) … sont sur la table. »",
+              resultat: 'succes', origine: 'devoir_scolaire', dureeSec: 95, notions: ["L'accord du participe passé"] },
+          ],
+        },
+        {
+          position: 3, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Seconde phrase : première réponse « mangées » corrigée seul(e) après avoir localisé le COD après le verbe.",
+          exercices: [
+            { id: 'xr-202', enonce: "Complète en accordant le participe passé si nécessaire : « Elles ont (manger) … une pomme. »",
+              resultat: 'fragile', origine: 'devoir_scolaire', dureeSec: 80, notions: ["L'accord du participe passé"] },
+          ],
+        },
+        {
+          position: 4, type: 'bilan_session', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Bilan : règle du COD placé avant le verbe restituée correctement en fin de séance.",
+          exercices: [],
+        },
+      ],
+    },
     // 2 — La division posée (entraînement)
-    [
-      { type: 'ari', text: "Salut {name}. On s'entraîne sur la division posée. 452 divisé par 4, tu poses ?" },
-      { type: 'child', text: "4 divisé par 4, ça fait 1. Ensuite 5 divisé par 4… 1, et il reste 1." },
-      { type: 'ari', text: "Continue." },
-      { type: 'child', text: "12 divisé par 4, ça fait 3. Donc 113." },
-      { type: 'exercise', exerciseId: 'EX-3105', notion: 'La division posée', level: 'CM1', attempts: 1, success: true,
-        statement: "Pose et effectue la division : 452 ÷ 4.",
-        visual: "Une potence de division déjà tracée, avec le dividende 452 et le diviseur 4." },
-      { type: 'ari', text: "Et comment vérifier ton résultat sans refaire le calcul ?" },
-      { type: 'child', text: "On multiplie 113 par 4 ?" },
-      { type: 'ari', text: "Vas-y." },
-      { type: 'child', text: "452. C'est bon !" },
-      { type: 'ari', text: "Une plus difficile : 517 divisé par 3." },
-      { type: 'child', text: "171… reste 4." },
-      { type: 'ari', text: "Un reste peut-il être plus grand que le diviseur ?" },
-      { type: 'child', text: "Non… alors 172, reste 1." },
-      { type: 'exercise', exerciseId: 'EX-3108', notion: 'Division avec reste', level: 'CM1', attempts: 2, success: true,
-        statement: "Pose et effectue : 517 ÷ 3. Indique le quotient et le reste.",
-        visual: null },
-      { type: 'ari', text: "Bien. On s'arrête là pour aujourd'hui." },
-    ],
+    {
+      theme: 'La division posée',
+      notion: 'La division posée',
+      resume: "Bonne séance de calcul posé. {name} enchaîne les étapes de la division sans erreur de table et vérifie spontanément son résultat par la multiplication. Sur la division avec reste, un reste supérieur au diviseur a d'abord été accepté, puis corrigé après une seule question.",
+      ecrans: [
+        {
+          position: 1, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "452 ÷ 4 posé et résolu sans aide, vérification par la multiplication proposée spontanément.",
+          exercices: [
+            { id: 'xr-301', enonce: 'Pose et effectue la division : 452 ÷ 4.',
+              resultat: 'succes', origine: 'entrainement_complementaire', dureeSec: 150, notions: ['La division posée'] },
+          ],
+        },
+        {
+          position: 2, type: 'exercice', statutFermeture: 'resolu_fragile', pouce: null,
+          synthese: "517 ÷ 3 : premier quotient avec un reste supérieur au diviseur, corrigé seul après la question « un reste peut-il dépasser le diviseur ? ».",
+          exercices: [
+            { id: 'xr-302', enonce: 'Pose et effectue : 517 ÷ 3. Indique le quotient et le reste.',
+              resultat: 'fragile', origine: 'entrainement_complementaire', dureeSec: 210, notions: ['Division avec reste'] },
+          ],
+        },
+      ],
+    },
     // 3 — La proportionnalité (entraînement)
-    [
-      { type: 'ari', text: "Bonjour {name}. Aujourd'hui, la proportionnalité. Si 3 croissants coûtent 3,60 €, combien coûte un croissant ?" },
-      { type: 'child', text: "1,20 €." },
-      { type: 'ari', text: "Comment tu l'as trouvé ?" },
-      { type: 'child', text: "J'ai divisé par 3." },
-      { type: 'exercise', exerciseId: 'EX-4021', notion: 'La proportionnalité', level: 'CM1', attempts: 1, success: true,
-        statement: "3 croissants coûtent 3,60 €. Combien coûte 1 croissant ?",
-        visual: "Un tableau de proportionnalité à deux lignes : nombre de croissants, prix en euros." },
-      { type: 'ari', text: "Alors combien coûtent 7 croissants ?" },
-      { type: 'child', text: "7 fois 1,20… 8,40 €." },
-      { type: 'exercise', exerciseId: 'EX-4022', notion: 'La proportionnalité', level: 'CM1', attempts: 1, success: true,
-        statement: "En utilisant le prix d'un croissant, calcule le prix de 7 croissants.",
-        visual: null },
-      { type: 'ari', text: "Et si la boulangerie propose « 10 croissants pour 10 € », c'est une bonne affaire ?" },
-      { type: 'child', text: "10 fois 1,20 ça ferait 12 €… donc oui !" },
-      { type: 'mastery', notion: 'La proportionnalité', from: 'Fragile', to: 'En cours' },
-      { type: 'ari', text: "Tu as utilisé le passage par l'unité sans que je te le demande. C'est exactement la bonne méthode." },
-    ],
-    // 4 — Les homophones (séance courte)
-    [
-      { type: 'ari', text: "Salut {name}. Une séance courte sur les homophones. « a » ou « à » : « Il ___ mangé ___ midi. »" },
-      { type: 'child', text: "« Il a mangé à midi. »" },
-      { type: 'ari', text: "Comment tu choisis entre les deux ?" },
-      { type: 'child', text: "Si on peut dire « avait », c'est le verbe avoir." },
-      { type: 'exercise', exerciseId: 'EX-5310', notion: 'Les homophones grammaticaux', level: 'CM1', attempts: 1, success: true,
-        statement: "Complète avec « a » ou « à » : « Il ___ mangé ___ midi. »",
-        visual: null },
-      { type: 'ari', text: "« Son » ou « sont » : « Ils ___ partis avec ___ chien. »" },
-      { type: 'child', text: "« Ils son partis »… non, « sont », c'est le verbe être." },
-      { type: 'exercise', exerciseId: 'EX-5311', notion: 'Les homophones grammaticaux', level: 'CM1', attempts: 2, success: true,
-        statement: "Complète avec « son » ou « sont » : « Ils ___ partis avec ___ chien. »",
-        visual: null },
-      { type: 'ari', text: "Bien. C'est tout pour aujourd'hui — c'était rapide et propre." },
-    ],
+    {
+      theme: 'La proportionnalité',
+      notion: 'La proportionnalité',
+      resume: "Très bonne séance : {name} utilise le passage par l'unité sans qu'on le lui demande, y compris pour juger une offre commerciale. La notion progresse nettement.",
+      ecrans: [
+        {
+          position: 1, type: 'vue_ensemble', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Situation d'entrée sur les prix : la stratégie « diviser pour trouver le prix d'un croissant » est verbalisée d'emblée.",
+          exercices: [],
+        },
+        {
+          position: 2, type: 'exercice', statutFermeture: 'resolu_succes', pouce: 'haut',
+          synthese: "Passage par l'unité maîtrisé : prix d'un croissant puis de sept, calculés sans hésitation.",
+          exercices: [
+            { id: 'xr-401', enonce: '3 croissants coûtent 3,60 €. Combien coûte 1 croissant ?',
+              resultat: 'succes', origine: 'entrainement_complementaire', dureeSec: 40, notions: ['La proportionnalité'] },
+            { id: 'xr-402', enonce: "En utilisant le prix d'un croissant, calcule le prix de 7 croissants.",
+              resultat: 'succes', origine: 'entrainement_complementaire', dureeSec: 55, notions: ['La proportionnalité'] },
+          ],
+        },
+        {
+          position: 3, type: 'pont_entrainement', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "Transfert : l'offre « 10 croissants pour 10 € » est jugée avantageuse par comparaison au prix unitaire.",
+          exercices: [],
+        },
+      ],
+    },
+    // 4 — Les homophones (séance courte, sans bilan rédigé)
+    {
+      theme: 'Les homophones grammaticaux',
+      notion: 'Les homophones grammaticaux',
+      resume: null, // vieille session sans bilan → le front affiche « — »
+      ecrans: [
+        {
+          position: 1, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+          synthese: "« a / à » : distinction justifiée par la substitution avec « avait ».",
+          exercices: [
+            { id: 'xr-501', enonce: 'Complète avec « a » ou « à » : « Il ___ mangé ___ midi. »',
+              resultat: 'succes', origine: 'entrainement_libre', dureeSec: 35, notions: ['Les homophones grammaticaux'] },
+          ],
+        },
+        {
+          position: 2, type: 'exercice', statutFermeture: 'en_cours', pouce: null,
+          synthese: null, // écran encore ouvert : pas de synthèse → « — »
+          exercices: [
+            { id: 'xr-502', enonce: 'Complète avec « son » ou « sont » : « Ils ___ partis avec ___ chien. »',
+              resultat: 'fragile', origine: 'entrainement_libre', dureeSec: 70, notions: ['Les homophones grammaticaux'] },
+          ],
+        },
+      ],
+    },
   ];
 
-  // [joursAvantAujourdhui, heure, childId, mode, duréeMin, transcriptIdx]
-  // duréeMin null = session encore ouverte (comme côté serveur).
+  // [joursAvantAujourdhui, heure, childId, mode, duréeMin, scenarioIdx]
+  // duréeMin null = session active (comme côté serveur).
   const SESSION_SEEDS = [
     [0,  '18:05', 'c5', 'entrainement', null, 4],
     [0,  '17:40', 'c1', 'entrainement', 18, 0],
@@ -164,24 +206,77 @@
   const childById = Object.fromEntries(CHILDREN.map((c) => [c.id, c]));
 
   const SESSIONS = SESSION_SEEDS.map((seed, i) => {
-    const [daysAgo, time, childId, mode, durationMin, transcriptIdx] = seed;
+    const [daysAgo, time, childId, mode, durationMin, scenarioIdx] = seed;
     const name = childById[childId].name;
-    const timeline = TRANSCRIPTS[transcriptIdx].map((item) =>
-      item.type === 'ari' || item.type === 'child'
-        ? { ...item, text: item.text.split('{name}').join(name) }
-        : { ...item }
-    );
+    const scenario = SCENARIOS[scenarioIdx];
+    const fill = (text) => (text == null ? null : text.split('{name}').join(name));
     return {
       id: 'ses-' + String(i + 1).padStart(2, '0'),
       childId,
       date: isoDaysAgo(daysAgo),
       time,
-      mode, // 'entrainement' | 'devoirs'
-      status: durationMin == null ? 'open' : 'closed',
-      durationMin, // null = session ouverte
-      timeline,
+      mode, // 'devoirs' | 'entrainement'
+      status: durationMin == null ? 'active' : 'archivee',
+      durationMin, // null = session active
+      theme: scenario.theme,
+      notion: scenario.notion,
+      resume: fill(scenario.resume),
+      ecrans: scenario.ecrans.map((e) => ({
+        ...e,
+        synthese: fill(e.synthese),
+        exercices: e.exercices.map((x) => ({ ...x, notions: [...x.notions] })),
+      })),
     };
   });
 
-  globalThis.ARISTOCLES_MOCK = { children: CHILDREN, sessions: SESSIONS };
+  // Acquisitions par enfant (mémoire, indépendante de la plage) —
+  // c6 volontairement vide pour couvrir le cas « liste maigre ».
+  const ACQUISITIONS = {
+    c1: [
+      { notion: 'Les fractions', maitrise: 'acquise', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(0) },
+      { notion: 'Comparaison de fractions', maitrise: 'en_cours', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(0) },
+      { notion: 'Fractions et droite graduée', maitrise: 'fragile', vuEnClasse: 'non_determine', majDate: isoDaysAgo(0) },
+      { notion: "L'accord du participe passé", maitrise: 'en_cours', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(8) },
+    ],
+    c2: [
+      { notion: "L'accord du participe passé", maitrise: 'en_cours', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(0) },
+      { notion: 'Les homophones grammaticaux', maitrise: 'acquise', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(8) },
+    ],
+    c3: [
+      { notion: 'La division posée', maitrise: 'acquise', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(1) },
+      { notion: 'Division avec reste', maitrise: 'en_cours', vuEnClasse: 'non_determine', majDate: isoDaysAgo(1) },
+    ],
+    c4: [
+      { notion: 'La proportionnalité', maitrise: 'en_cours', vuEnClasse: 'presume_non_vu', majDate: isoDaysAgo(2) },
+    ],
+    c5: [
+      { notion: 'La proportionnalité', maitrise: 'parfaitement_acquise', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(12) },
+      { notion: 'Les homophones grammaticaux', maitrise: 'jamais_vue', vuEnClasse: 'non_determine', majDate: isoDaysAgo(0) },
+    ],
+    c6: [],
+    c7: [
+      { notion: 'La division posée', maitrise: 'fragile', vuEnClasse: 'presume_vu', majDate: isoDaysAgo(3) },
+    ],
+  };
+
+  // Coûts LLM (forme de retour de getStats().llm, statique).
+  const LLM = {
+    totalEur: 3.4162,
+    calls: 412,
+    tokensInput: 1842300,
+    tokensOutput: 236480,
+    perRole: [
+      { role: 'tutor', eur: 2.1074, calls: 236, tokensInput: 1204500, tokensOutput: 148200 },
+      { role: 'synthese_ecran', eur: 0.7842, calls: 118, tokensInput: 402600, tokensOutput: 61800 },
+      { role: 'bilan_session', eur: 0.3411, calls: 37, tokensInput: 168400, tokensOutput: 21300 },
+      { role: 'vision_devoirs', eur: 0.1835, calls: 21, tokensInput: 66800, tokensOutput: 5180 },
+    ],
+  };
+
+  globalThis.ARISTOCLES_MOCK = {
+    children: CHILDREN,
+    sessions: SESSIONS,
+    acquisitions: ACQUISITIONS,
+    llm: LLM,
+  };
 })();
