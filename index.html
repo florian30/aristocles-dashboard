@@ -270,6 +270,15 @@
   .stats-table .table-row.is-inactive .row-name,
   .stats-table .table-row.is-inactive .row-num { color: var(--ink-placeholder); }
 
+  /* ---- Bloc coûts IA ---- */
+  .llm-section { margin-top: 48px; }
+  .llm-kpis { margin-bottom: 24px; }
+  .llm-kpis .kpi-value { font-size: 26px; }
+  .llm-table .table-head,
+  .llm-table .table-row { display: grid; grid-template-columns: 1fr 130px 100px 130px 130px; }
+  .llm-table .row-name { font-size: 14.5px; font-weight: 500; color: var(--ink); font-family: var(--font-body); }
+  .llm-table .row-num { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink); }
+
   /* ---- Vue Sessions ---- */
   .sessions-table .table-head,
   .sessions-table .table-row { display: grid; grid-template-columns: 200px 1fr 150px 100px 100px; }
@@ -280,6 +289,13 @@
   .sessions-table .table-row:hover { background: var(--surface-raised); }
   .sessions-table .row-date { font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .sessions-table .row-name { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .sessions-table .row-theme {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    margin-top: 1px;
+  }
   .sessions-table .row-mode { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
   .mode-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
   .mode-dot.is-entrainement { background: var(--olive-light); }
@@ -302,35 +318,76 @@
     flex-wrap: wrap;
   }
   .reader-head h2 { font-size: 28px; }
+  .reader-titles { display: flex; flex-direction: column; gap: 6px; }
+  .reader-sub { font-size: 14px; color: var(--ink-soft); }
   .reader-meta { font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
-  .timeline { display: flex; flex-direction: column; gap: 16px; padding-bottom: 64px; }
+  .reader-body { display: flex; flex-direction: column; gap: 16px; padding-bottom: 64px; }
+  .reader-body .section-title { font-size: 20px; margin: 24px 0 0; }
+  .reader-empty { margin: 0; font-size: 14px; color: var(--ink-soft); }
 
-  .bubble-group { display: flex; flex-direction: column; gap: 4px; max-width: 78%; }
-  .bubble-group.is-ari { align-items: flex-start; }
-  .bubble-group.is-child { align-items: flex-end; align-self: flex-end; }
-  .bubble-speaker {
+  /* Bilan de séance */
+  .resume-card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface-raised);
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .resume-card .eyebrow { font-size: 11px; }
+  .resume-text { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); }
+  .resume-text.is-empty { color: var(--ink-placeholder); }
+
+  /* Cartes d'écran */
+  .ecran-card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--cream);
+    overflow: hidden;
+  }
+  .ecran-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(214, 205, 185, 0.5);
+    background: var(--surface-raised);
+  }
+  .ecran-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink); }
+  .ecran-flags { display: flex; align-items: center; gap: 10px; }
+  .chip {
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
   }
-  .bubble {
-    padding: 12px 16px;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--ink);
-  }
-  .bubble-group.is-ari .bubble {
-    background: var(--surface-raised);
-    border: 1px solid var(--border);
-    border-radius: 16px 16px 16px 4px;
-  }
-  .bubble-group.is-child .bubble {
-    background: var(--sand);
-    border-radius: 16px 16px 4px 16px;
-  }
+  .chip.is-success { color: var(--success); }
+  .chip.is-fragile { color: var(--terracotta); }
+  .chip.is-failure { color: var(--error); }
+  .chip.is-info    { color: var(--info); }
+  .chip.is-muted   { color: var(--ink-soft); }
+  .pouce { font-size: 12px; color: var(--ink-placeholder); white-space: nowrap; }
+  .ecran-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .ecran-synthese { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+  .ecran-synthese.is-empty { color: var(--ink-placeholder); }
+  .ecran-exos { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Acquisitions */
+  .acq-table .table-head,
+  .acq-table .table-row { display: grid; grid-template-columns: 1fr 180px 140px 120px; column-gap: 12px; }
+  .acq-table .row-name { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+  .acq-table .row-num { font-size: 14px; color: var(--ink-soft); }
+  .acq-maitrise { font-size: 14px; font-weight: 600; }
+  .acq-maitrise.is-success { color: var(--success); }
+  .acq-maitrise.is-fragile { color: var(--terracotta); }
+  .acq-maitrise.is-info    { color: var(--ink); }
+  .acq-maitrise.is-muted   { color: var(--ink-placeholder); }
 
   .exercise-card {
     border: 1px solid var(--border);
@@ -360,7 +417,9 @@
     padding: 3px 10px;
   }
   .verdict.is-success { color: var(--success); }
+  .verdict.is-fragile { color: var(--terracotta); }
   .verdict.is-failure { color: var(--error); }
+  .verdict.is-muted   { color: var(--ink-soft); }
   .exercise-caret {
     width: 8px;
     height: 8px;
@@ -382,13 +441,6 @@
   .exercise-detail-block p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
   .exercise-detail-block.is-visual p { color: var(--ink-soft); font-style: italic; }
 
-  .mastery-divider { display: flex; align-items: center; gap: 16px; margin: 4px 0; }
-  .mastery-divider::before,
-  .mastery-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-  .mastery-label { flex: none; font-size: 13px; color: var(--ink-soft); }
-  .mastery-label .mastery-notion { color: var(--ink); font-weight: 500; }
-  .mastery-label .mastery-to { color: var(--olive-deep); font-weight: 600; }
-
   /* ---- Ajustements écrans étroits ---- */
   @media (max-width: 900px) {
     .topbar { padding: 0 24px; gap: 24px; }
@@ -396,6 +448,10 @@
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .sessions-table .table-head,
     .sessions-table .table-row { grid-template-columns: 150px 1fr 130px 80px 80px; }
+    .llm-table .table-head,
+    .llm-table .table-row { grid-template-columns: 1fr 90px 70px 90px 90px; }
+    .acq-table .table-head,
+    .acq-table .table-row { grid-template-columns: 1fr 130px 110px 100px; }
   }
 </style>
 </head>
@@ -455,6 +511,11 @@
       <div id="kpi-grid" class="kpi-grid"></div>
       <h2 class="section-title">Par enfant</h2>
       <div id="stats-table" class="data-table stats-table"></div>
+      <section id="llm-section" class="llm-section" hidden>
+        <h2 class="section-title">Coûts IA</h2>
+        <div id="llm-kpis" class="kpi-grid llm-kpis"></div>
+        <div id="llm-table" class="data-table llm-table"></div>
+      </section>
     </section>
 
     <!-- Vue Sessions -->
@@ -468,10 +529,13 @@
       <div class="reader">
         <a id="reader-back" class="reader-back" href="#">← Retour aux sessions</a>
         <div class="reader-head">
-          <h2 id="reader-name"></h2>
+          <div class="reader-titles">
+            <h2 id="reader-name"></h2>
+            <div id="reader-sub" class="reader-sub"></div>
+          </div>
           <div id="reader-meta" class="reader-meta"></div>
         </div>
-        <div id="timeline" class="timeline"></div>
+        <div id="reader-body" class="reader-body"></div>
       </div>
     </section>
   </main>

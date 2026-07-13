@@ -1,8 +1,8 @@
 /* ============================================================
    Aristocles — Couche d'accès aux données
    Par défaut : appelle l'Edge Function Supabase `dashboard`
-   (POST JSON { password, action, params }) et adapte ses
-   réponses aux formes consommées par la page.
+   (POST JSON { password, action, params }, schéma socle) et
+   adapte ses réponses aux formes consommées par la page.
    Mode démo : ajouter `?mock=1` à l'URL pour servir les données
    factices de mock.js avec les mêmes formes de retour.
 
@@ -11,28 +11,35 @@
    getStats(from, to) →
    {
      activeChildren, sessionCount, exerciseCount, totalMinutes,
-     perChild: [{ childId, name, sessions, exercises, minutes }]
+     perChild: [{ childId, name, sessions, exercises, minutes }],
+     llm: {
+       totalEur, calls, tokensInput, tokensOutput,
+       perRole: [{ role, eur, calls, tokensInput, tokensOutput }]
+     } | null
    }
    NB : en mode réel, perChild ne contient que les enfants actifs
    sur la plage — la page complète avec la liste connue au login.
 
    getSessions(from, to, childId) →
-   [{ id, date, time, childId, childName, mode, status,
+   [{ id, date, time, childId, childName, mode, status, theme,
       durationMin, exerciseCount }]
    triées de la plus récente à la plus ancienne.
-   durationMin est null pour une session encore ouverte.
+   mode : 'devoirs' | 'entrainement' ; status : 'active' |
+   'archivee'. durationMin est null pour une session active ;
+   une session archivée sans écran vaut 0.
 
    getSessionDetail(id) →
-   { id, date, time, childId, childName, mode, status,
-     durationMin, exerciseCount, timeline: [...] } ou null.
-   Éléments de timeline :
-     { type: 'ari' | 'child', text }
-     { type: 'exercise', exerciseId, notion, level, attempts,
-       success, statement, visual }
-     { type: 'mastery', notion, from, to }  — from peut être null
-   NB : le transcript réel n'est pas horodaté ; les exercices et
-   changements de maîtrise (ordonnés entre eux par horodatage)
-   sont placés à la suite du dialogue, pas intercalés dedans.
+   { id, date, time, childId, childName, classe, mode, status,
+     theme, notion, durationMin, exerciseCount,
+     resume,            — bilan de séance rédigé, ou null
+     ecrans: [{ position, type, synthese, statutFermeture, pouce,
+                exercices: [{ id, enonce, resultat, origine,
+                              dureeSec, notions }] }],
+     acquisitions: [{ notion, maitrise, vuEnClasse, majDate }]
+   } ou null si la session est inconnue.
+   Les champs d'état (status, type, statutFermeture, pouce,
+   resultat, origine, maitrise, vuEnClasse) portent les valeurs
+   socle brutes — les libellés d'affichage vivent dans app.js.
 
    Conventions :
    - from / to : dates 'AAAA-MM-JJ' inclusives (converties en
@@ -82,63 +89,6 @@
 
   // ---------- Adaptation contrat fonction → formes de la page ----------
 
-  const MODE_KEY = { homework: 'devoirs', learning: 'entrainement' };
-  const MASTERY_LABEL = {
-    fragile: 'Fragile',
-    to_review: 'À revoir',
-    solid: 'Solide',
-    acquired: 'Acquis',
-  };
-
-  // Les notions arrivent en slug ('accord_gn') : lisible à défaut
-  // d'un libellé fourni par la fonction.
-  function conceptLabel(conceptId) {
-    if (!conceptId) return '';
-    const words = String(conceptId).split('_').join(' ');
-    return words.charAt(0).toUpperCase() + words.slice(1);
-  }
-
-  // Libellés français des primitives visuelles (catalogue proto) ;
-  // à défaut le slug brut reste lisible.
-  const PRIMITIVE_LABEL = {
-    clock: 'Horloge',
-    number_line: 'Droite graduée',
-    fraction_bar: 'Barre de fractions',
-    fraction_model: 'Modèle de fraction',
-    coordinate_grid: 'Grille de coordonnées',
-    highlighted_text: 'Texte surligné',
-    highlighted_number: 'Nombres mis en évidence',
-    labeled_shape: 'Figure légendée',
-    value_table: 'Tableau de valeurs',
-    bar_chart: 'Diagramme en barres',
-    polygon_grid: 'Polygone sur grille',
-    sharing: 'Partage',
-    symmetry_figure: 'Figure symétrique',
-    relation_map: 'Schéma de relations',
-    choice_tree: 'Arbre de choix',
-    word_boxes: 'Boîtes de mots',
-    conjugation_table: 'Tableau de conjugaison',
-    timeline: 'Frise chronologique',
-  };
-
-  // Le visuel arrive en jsonb brut { primitive, params } (ou une liste
-  // de visuels) : on le rend lisible sans prétendre à une description
-  // pédagogique. Une chaîne passe telle quelle (parité mode démo).
-  function describeVisual(visual) {
-    if (!visual) return null;
-    if (typeof visual === 'string') return visual || null;
-    if (Array.isArray(visual)) {
-      const parts = visual.map(describeVisual).filter(Boolean);
-      return parts.length ? parts.join(' · ') : null;
-    }
-    if (!visual.primitive) return null;
-    const label = PRIMITIVE_LABEL[visual.primitive] || visual.primitive;
-    const params = Object.entries(visual.params || {})
-      .map(([k, v]) => k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v))
-      .join(', ');
-    return params ? label + ' — ' + params : label;
-  }
-
   function toMinutes(seconds) {
     return seconds == null ? null : Math.round(seconds / 60);
   }
@@ -169,6 +119,23 @@
     return params;
   }
 
+  function mapLlm(llm) {
+    if (!llm) return null;
+    return {
+      totalEur: llm.cout_total_eur || 0,
+      calls: llm.appels || 0,
+      tokensInput: llm.tokens_input || 0,
+      tokensOutput: llm.tokens_output || 0,
+      perRole: (llm.par_role || []).map((r) => ({
+        role: r.role,
+        eur: r.cout_eur || 0,
+        calls: r.appels || 0,
+        tokensInput: r.tokens_input || 0,
+        tokensOutput: r.tokens_output || 0,
+      })),
+    };
+  }
+
   const realApi = {
     async getStats(from, to) {
       const data = await call('stats', rangeParams(from, to));
@@ -184,6 +151,7 @@
           exercises: c.exercises,
           minutes: toMinutes(c.total_seconds) || 0,
         })),
+        llm: mapLlm(data.llm),
       };
     },
 
@@ -197,8 +165,9 @@
         time: localTime(s.started_at),
         childId: s.child_id,
         childName: s.first_name,
-        mode: MODE_KEY[s.mode] || s.mode,
+        mode: s.mode,
         status: s.status,
+        theme: s.theme_libelle || null,
         durationMin: toMinutes(s.duration_seconds),
         exerciseCount: s.exercises,
       }));
@@ -214,50 +183,21 @@
       }
       const s = data.session;
 
-      // Le dialogue d'abord — le transcript n'est pas horodaté.
-      const timeline = (data.transcript || [])
-        .filter((m) => m && (m.role === 'assistant' || m.role === 'user'))
-        .map((m) => ({
-          type: m.role === 'assistant' ? 'ari' : 'child',
-          text: m.content,
-        }));
-
-      // Puis exercices et changements de maîtrise survenus pendant la
-      // session, ordonnés entre eux par horodatage.
-      const startedAt = Date.parse(s.started_at);
-      const closedAt = s.closed_at ? Date.parse(s.closed_at) : Infinity;
-      const events = [];
-      for (const r of data.exercise_results || []) {
-        events.push({
-          at: Date.parse(r.created_at),
-          item: {
-            type: 'exercise',
-            exerciseId: r.exercise_id,
-            notion: r.concept_label || conceptLabel(r.concept_id),
-            level: s.grade,
-            attempts: r.attempts_count,
-            success: r.success,
-            statement: r.statement || null,
-            visual: describeVisual(r.visual),
-          },
-        });
-      }
-      for (const a of data.acquisitions || []) {
-        const at = Date.parse(a.updated_at);
-        if (at >= startedAt && at <= closedAt) {
-          events.push({
-            at,
-            item: {
-              type: 'mastery',
-              notion: a.concept_label || conceptLabel(a.concept_id),
-              from: null, // la fonction n'expose pas l'ancien statut
-              to: MASTERY_LABEL[a.status] || a.status,
-            },
-          });
-        }
-      }
-      events.sort((a, b) => a.at - b.at);
-      timeline.push(...events.map((e) => e.item));
+      const ecrans = (data.ecrans || []).map((e) => ({
+        position: e.position,
+        type: e.type,
+        synthese: e.synthese_redigee || null,
+        statutFermeture: e.statut_fermeture || null,
+        pouce: e.pouce_enfant || null,
+        exercices: (e.exercices || []).map((x) => ({
+          id: x.id,
+          enonce: x.enonce || null,
+          resultat: x.resultat,
+          origine: x.origine,
+          dureeSec: x.duree_secondes,
+          notions: x.notions || [],
+        })),
+      }));
 
       return {
         id: s.id,
@@ -265,11 +205,21 @@
         time: localTime(s.started_at),
         childId: s.child_id,
         childName: s.first_name,
-        mode: MODE_KEY[s.mode] || s.mode,
+        classe: s.classe || null,
+        mode: s.mode,
         status: s.status,
+        theme: s.theme_libelle || null,
+        notion: s.notion_principale || null,
         durationMin: toMinutes(s.duration_seconds),
-        exerciseCount: (data.exercise_results || []).length,
-        timeline,
+        exerciseCount: ecrans.reduce((acc, e) => acc + e.exercices.length, 0),
+        resume: data.resume_seance || null,
+        ecrans,
+        acquisitions: (data.acquisitions || []).map((a) => ({
+          notion: a.notion || null,
+          maitrise: a.statut_maitrise,
+          vuEnClasse: a.statut_vu_en_classe,
+          majDate: a.derniere_mise_a_jour ? localDate(a.derniere_mise_a_jour) : null,
+        })),
       };
     },
   };
@@ -283,12 +233,12 @@
   }
 
   function mockExerciseCount(session) {
-    return session.timeline.filter((item) => item.type === 'exercise').length;
+    return session.ecrans.reduce((acc, e) => acc + e.exercices.length, 0);
   }
 
   const mockApi = {
     async getStats(from, to) {
-      const { children, sessions } = globalThis.ARISTOCLES_MOCK;
+      const { children, sessions, llm } = globalThis.ARISTOCLES_MOCK;
       const filtered = sessions.filter((s) => mockInRange(s, from, to));
       const perChild = children.map((child) => {
         const mine = filtered.filter((s) => s.childId === child.id);
@@ -306,6 +256,8 @@
         exerciseCount: filtered.reduce((acc, s) => acc + mockExerciseCount(s), 0),
         totalMinutes: filtered.reduce((acc, s) => acc + (s.durationMin || 0), 0),
         perChild,
+        // Bloc statique (non filtré par la plage) — suffisant pour la démo.
+        llm: { ...llm, perRole: llm.perRole.map((r) => ({ ...r })) },
       };
     },
 
@@ -323,6 +275,7 @@
           childName: childById[s.childId].name,
           mode: s.mode,
           status: s.status,
+          theme: s.theme,
           durationMin: s.durationMin,
           exerciseCount: mockExerciseCount(s),
         }))
@@ -330,7 +283,7 @@
     },
 
     async getSessionDetail(id) {
-      const { children, sessions } = globalThis.ARISTOCLES_MOCK;
+      const { children, sessions, acquisitions } = globalThis.ARISTOCLES_MOCK;
       const session = sessions.find((s) => s.id === id);
       if (!session) return null;
       const child = children.find((c) => c.id === session.childId);
@@ -340,11 +293,19 @@
         time: session.time,
         childId: session.childId,
         childName: child.name,
+        classe: child.classe,
         mode: session.mode,
         status: session.status,
+        theme: session.theme,
+        notion: session.notion,
         durationMin: session.durationMin,
         exerciseCount: mockExerciseCount(session),
-        timeline: session.timeline.map((item) => ({ ...item })),
+        resume: session.resume,
+        ecrans: session.ecrans.map((e) => ({
+          ...e,
+          exercices: e.exercices.map((x) => ({ ...x, notions: [...x.notions] })),
+        })),
+        acquisitions: (acquisitions[session.childId] || []).map((a) => ({ ...a })),
       };
     },
   };
