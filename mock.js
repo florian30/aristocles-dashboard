@@ -61,6 +61,26 @@
           ],
         },
       ],
+      // Trace technique d'exemple (mode ?mock=1) : deux tours entrelacés
+      // sur l'exercice de comparaison (xr-102) — le tour 9 (correction
+      // vocale, PTT relancé) démarre son TTS avant que celui du tour 8
+      // n'ait reçu de tts_fin. C'est la signature du bug visé par la
+      // chronologie technique. offsetMs est relatif au début de la
+      // session (converti en ts absolu ISO à la construction).
+      evenements: [
+        { seq: 1, type: 'trigger_envoye', offsetMs: 150200, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 7, origine: 'ptt' } },
+        { seq: 2, type: 'tour_debut', offsetMs: 150400, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 7 } },
+        { seq: 3, type: 'tour_fin', offsetMs: 152100, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 7 } },
+        { seq: 4, type: 'tts_debut', offsetMs: 152300, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 7 } },
+        { seq: 5, type: 'tts_fin', offsetMs: 154800, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 7 } },
+        { seq: 6, type: 'trigger_envoye', offsetMs: 158000, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 8, origine: 'ptt' } },
+        { seq: 7, type: 'tour_debut', offsetMs: 158250, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 8 } },
+        { seq: 8, type: 'verdict_commit', offsetMs: 160900, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 8, resultat: 'fragile' } },
+        { seq: 9, type: 'tts_debut', offsetMs: 161100, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 8 } },
+        { seq: 10, type: 'trigger_envoye', offsetMs: 162400, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 9, type_trigger: 'correction' } },
+        { seq: 11, type: 'tour_debut', offsetMs: 162600, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 9 } },
+        { seq: 12, type: 'tts_debut', offsetMs: 162900, ecranType: 'exercice', exerciseId: 'xr-102', detail: { tour: 9 } },
+      ],
     },
     // 1 — L'accord du participe passé (devoirs)
     {
@@ -210,10 +230,14 @@
     const name = childById[childId].name;
     const scenario = SCENARIOS[scenarioIdx];
     const fill = (text) => (text == null ? null : text.split('{name}').join(name));
+    const dateStr = isoDaysAgo(daysAgo);
+    // Début de session en ms, pour convertir les offsets de la
+    // chronologie technique (scenario.evenements) en ts ISO absolus.
+    const startMs = new Date(dateStr + 'T' + time + ':00').getTime();
     return {
       id: 'ses-' + String(i + 1).padStart(2, '0'),
       childId,
-      date: isoDaysAgo(daysAgo),
+      date: dateStr,
       time,
       mode, // 'devoirs' | 'entrainement'
       status: durationMin == null ? 'active' : 'archivee',
@@ -225,6 +249,14 @@
         ...e,
         synthese: fill(e.synthese),
         exercices: e.exercices.map((x) => ({ ...x, notions: [...x.notions] })),
+      })),
+      evenements: (scenario.evenements || []).map((e) => ({
+        seq: e.seq,
+        type: e.type,
+        ts: new Date(startMs + e.offsetMs).toISOString(),
+        ecranType: e.ecranType || null,
+        exerciseId: e.exerciseId || null,
+        detail: e.detail ? { ...e.detail } : null,
       })),
     };
   });
