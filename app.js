@@ -126,6 +126,23 @@
     return v.toLocaleString('fr-FR');
   }
 
+  // Horodatage précis à la milliseconde pour la chronologie technique.
+  function fmtTsPrecise(iso) {
+    const d = new Date(iso);
+    return String(d.getHours()).padStart(2, '0') + ':' +
+      String(d.getMinutes()).padStart(2, '0') + ':' +
+      String(d.getSeconds()).padStart(2, '0') + '.' +
+      String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  // Résumé d'un detail jsonb : concaténation des paires clé:valeur,
+  // sans autre interprétation (jamais de verbatim par construction).
+  function fmtDetailSuffix(detail) {
+    if (!detail || typeof detail !== 'object') return '';
+    const pairs = Object.entries(detail).map(([k, v]) => k + ':' + v).join(' ');
+    return pairs ? ' · ' + pairs : '';
+  }
+
   // ---------- Construction DOM ----------
 
   function node(tag, className, text) {
@@ -442,6 +459,14 @@
       body.append(buildEcranCard(ecran));
     }
 
+    // Chronologie technique (trace client du pipeline voix) : section
+    // optionnelle, repliée par défaut. Absente tant qu'il n'y a rien à
+    // tracer (evenements vide — Edge pas encore déployée, ou aucun
+    // événement journalisé pour cette session).
+    if (session.evenements.length > 0) {
+      body.append(buildChronologieCard(session.evenements));
+    }
+
     // Acquisitions de l'enfant (mémoire, indépendante de la session).
     body.append(node('h2', 'section-title', 'Acquisitions'));
     body.append(buildAcquisitionsTable(session.acquisitions));
@@ -505,6 +530,51 @@
     const block = node('div', 'exercise-detail-block');
     block.append(node('span', 'eyebrow', 'Énoncé'), node('p', null, item.enonce));
     detail.append(block);
+    card.append(detail);
+
+    summary.setAttribute('role', 'button');
+    summary.setAttribute('tabindex', '0');
+    summary.setAttribute('aria-expanded', 'false');
+    const toggle = () => {
+      const open = card.classList.toggle('is-open');
+      detail.hidden = !open;
+      summary.setAttribute('aria-expanded', String(open));
+    };
+    summary.addEventListener('click', toggle);
+    summary.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+
+    return card;
+  }
+
+  // Carte repliable « Chronologie technique » : trace brute du pipeline
+  // voix (déclencheurs, tours, TTS), utile pour repérer un bug
+  // intermittent (ex. deux tours entrelacés). Même patron d'expansion
+  // que buildExerciseCard (role=button, aria-expanded, Enter/Espace).
+  function buildChronologieCard(evenements) {
+    const card = node('section', 'chrono-card is-expandable');
+
+    const summary = node('div', 'chrono-summary');
+    const end = node('div', 'chrono-head-end');
+    end.append(
+      node('span', 'chrono-count', plural(evenements.length, 'événement')),
+      node('span', 'chrono-caret')
+    );
+    summary.append(node('span', 'chrono-title', 'Chronologie technique'), end);
+    card.append(summary);
+
+    const detail = node('div', 'chrono-detail');
+    detail.hidden = true;
+    const list = node('div', 'chrono-events');
+    for (const ev of evenements) {
+      list.append(node('div', 'chrono-event',
+        fmtTsPrecise(ev.ts) + ' · ' + ev.type + fmtDetailSuffix(ev.detail)));
+    }
+    detail.append(list);
     card.append(detail);
 
     summary.setAttribute('role', 'button');

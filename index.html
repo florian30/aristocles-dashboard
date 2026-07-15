@@ -441,6 +441,49 @@
   .exercise-detail-block p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
   .exercise-detail-block.is-visual p { color: var(--ink-soft); font-style: italic; }
 
+  /* Chronologie technique (trace client, repliée par défaut) */
+  .chrono-card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--cream);
+    overflow: hidden;
+  }
+  .chrono-summary {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+  }
+  .chrono-summary:hover { background: var(--surface-raised); border-radius: 15px; }
+  .chrono-card.is-open .chrono-summary:hover { border-radius: 15px 15px 0 0; }
+  .chrono-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .chrono-head-end { display: flex; align-items: center; gap: 12px; flex: none; }
+  .chrono-count { font-size: 13px; color: var(--ink-soft); }
+  .chrono-caret {
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--ink-soft);
+    border-bottom: 1.5px solid var(--ink-soft);
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .chrono-card.is-open .chrono-caret { transform: rotate(225deg) translateY(-2px); }
+  .chrono-detail {
+    border-top: 1px solid rgba(214, 205, 185, 0.5);
+    padding: 12px 20px 16px;
+  }
+  .chrono-events { display: flex; flex-direction: column; gap: 3px; }
+  .chrono-event {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   /* ---- Ajustements écrans étroits ---- */
   @media (max-width: 900px) {
     .topbar { padding: 0 24px; gap: 24px; }

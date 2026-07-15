@@ -35,8 +35,12 @@
      ecrans: [{ position, type, synthese, statutFermeture, pouce,
                 exercices: [{ id, enonce, resultat, origine,
                               dureeSec, notions }] }],
-     acquisitions: [{ notion, maitrise, vuEnClasse, majDate }]
+     acquisitions: [{ notion, maitrise, vuEnClasse, majDate }],
+     evenements: [{ seq, type, ts, ecranType, exerciseId, detail }]
    } ou null si la session est inconnue.
+   evenements : trace technique du pipeline voix, triée par seq.
+   Contrat additif — absente tant que l'Edge n'expose pas encore
+   la clé : le front reçoit alors un tableau vide.
    Les champs d'état (status, type, statutFermeture, pouce,
    resultat, origine, maitrise, vuEnClasse) portent les valeurs
    socle brutes — les libellés d'affichage vivent dans app.js.
@@ -220,6 +224,14 @@
           vuEnClasse: a.statut_vu_en_classe,
           majDate: a.derniere_mise_a_jour ? localDate(a.derniere_mise_a_jour) : null,
         })),
+        evenements: (data.evenements ?? []).map((e) => ({
+          seq: e.seq,
+          type: e.type,
+          ts: e.client_ts,
+          ecranType: e.ecran_type || null,
+          exerciseId: e.exercise_id || null,
+          detail: e.detail || null,
+        })),
       };
     },
   };
@@ -306,6 +318,7 @@
           exercices: e.exercices.map((x) => ({ ...x, notions: [...x.notions] })),
         })),
         acquisitions: (acquisitions[session.childId] || []).map((a) => ({ ...a })),
+        evenements: (session.evenements || []).map((e) => ({ ...e, detail: e.detail ? { ...e.detail } : null })),
       };
     },
   };
