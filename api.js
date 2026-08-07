@@ -162,7 +162,9 @@
     async getSessions(from, to, childId) {
       const params = rangeParams(from, to);
       if (childId && childId !== 'all') params.child_id = childId;
-      const data = await call('sessions', params);
+      // Action au singulier depuis la phase 3 (renommage anglais/singulier
+      // de l'Edge dashboard) — la réponse garde son champ `sessions`.
+      const data = await call('session', params);
       return (data.sessions || []).map((s) => ({
         id: s.id,
         date: localDate(s.started_at),
