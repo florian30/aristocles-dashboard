@@ -17,7 +17,7 @@ python3 -m http.server 8000
 deno test tests/
 ```
 
-Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, sérialisation du `detail`, cache et transport de l'API, données factices.
+Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js`), cache et transport de l'API, données factices.
 
 ## Environnements et routes
 
@@ -25,14 +25,16 @@ L'environnement fait partie de l'URL (prod par défaut) :
 
 | Route | Écran |
 |---|---|
-| `#/{env}/veille/{AAAA-MM-JJ}` | La veille (page d'accueil, à venir) |
-| `#/{env}/apercu` | Vue d'ensemble (action `stats`) |
+| `#/{env}/veille/{AAAA-MM-JJ}` | La veille (page d'accueil, action `journee`) ; sans date = hier à Paris |
+| `#/{env}/apercu` | Vue d'ensemble (action `apercu` ; ancien tableau par enfant `stats` à la demande) |
 | `#/{env}/familles`, `#/{env}/familles/{child_id}` | Familles, fiche enfant (à venir) |
 | `#/{env}/seances`, `#/{env}/seances/{session_id}` | Liste des séances (`session`), lecteur (`session_detail`) |
 | `#/{env}/seances/{session_id}/tour/{llm_generation_id}` | Lecteur + trace IA d'un tour (à venir) |
-| `#/{env}/sante` | Santé & coûts (à venir) |
+| `#/{env}/sante` | Santé & coûts (action `sante`) |
 
-`{env}` vaut `prod` ou `dev`. En dev, un bandeau orange « BAC À SABLE — dev » reste affiché en permanence. Les filtres (`?periode=hier|7j|30j|tout`, `from`, `to`, `child`) sont dans le hash, donc un rafraîchissement les garde.
+`{env}` vaut `prod` ou `dev`. En dev, un bandeau orange « BAC À SABLE — dev » reste affiché en permanence. Les filtres sont dans le hash, donc un rafraîchissement les garde : `?periode=hier|7j|30j|tout`, `from`, `to`, `child` pour les Séances ; `?periode=7j|30j|92j` ou `from`/`to` pour la Vue d'ensemble et Santé & coûts (jours civils de Paris, plage ramenée à 92 jours avec un message si elle dépasse).
+
+**Jours de Paris.** Le serveur compte en jour civil Europe/Paris : « hier », les bornes envoyées à `apercu`/`sante` (`ui/paris.js`) et les heures affichées suivent Paris, quel que soit le fuseau de la machine. Un coût IA inconnu s'affiche « inconnu » (jamais 0 €), avec le nombre d'appels concernés.
 
 ## Accès
 
@@ -49,7 +51,8 @@ config.js       environnements (url, clé anon), version de supabase-js
 auth.js         connexion par env (supabase-js ou simulée en démo)
 api.js          transport HTTP, cache 5 min par (env, action, params), adaptateurs
 router.js       analyse et fabrication des hash
-ui/             formatage, unités et coûts, libellés, DOM, filtres
+ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de Paris,
+                période, graphe SVG, blocs techniques partagés (veille / santé)
 vues/           une vue par fichier
 mock/           données factices par action (formes brutes de l'Edge)
 tests/          tests Deno
