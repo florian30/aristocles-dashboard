@@ -11,7 +11,7 @@ import { estModeMock } from './config.js';
 import { transportMock } from './mock/transport.js';
 import { construireHash, ecouterHash, naviguer } from './router.js';
 import { el, etatChargement, etatErreur, lien } from './ui/dom.js';
-import { isoJoursAvant } from './ui/format.js';
+import { hierParis } from './ui/paris.js';
 import * as vueApercu from './vues/apercu.js';
 import * as vueConnexion from './vues/connexion.js';
 import * as vueFamilles from './vues/familles.js';
@@ -61,7 +61,7 @@ function vuePour(route) {
 async function rendreRoute(route) {
   // Formes non canoniques (env inconnu, veille sans date…) : réécriture.
   if (route.vue === 'veille' && !route.date) {
-    naviguer({ ...route, date: isoJoursAvant(1) }, { remplacer: true });
+    naviguer({ ...route, date: hierParis() }, { remplacer: true });
     return;
   }
   if (!route.canonique) {
@@ -161,7 +161,7 @@ function afficherConnexion(route, message) {
       }
       // Sonde : un compte connecté mais non autorisé est refusé ici,
       // plutôt que de découvrir le 403 plus tard.
-      const hier = isoJoursAvant(1);
+      const hier = hierParis();
       try {
         await api.stats(route.env, hier, hier);
       } catch (e) {
