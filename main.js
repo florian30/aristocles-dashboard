@@ -14,10 +14,12 @@ import { el, etatChargement, etatErreur, lien } from './ui/dom.js';
 import { hierParis } from './ui/paris.js';
 import * as vueApercu from './vues/apercu.js';
 import * as vueConnexion from './vues/connexion.js';
+import * as vueEnfant from './vues/enfant.js';
 import * as vueFamilles from './vues/familles.js';
 import * as vueSante from './vues/sante.js';
 import * as vueSeance from './vues/seance.js';
 import * as vueSeances from './vues/seances.js';
+import * as vueTour from './vues/tour.js';
 import * as vueVeille from './vues/veille.js';
 
 nettoyerStockageHerite();
@@ -52,7 +54,8 @@ let numeroRendu = 0;
 let ecranCourant = null; // identité de l'écran affiché (vue + identifiants)
 
 function vuePour(route) {
-  if (route.vue === 'seances') return route.sessionId ? vueSeance : vueSeances;
+  if (route.vue === 'seances') return route.generationId ? vueTour : route.sessionId ? vueSeance : vueSeances;
+  if (route.vue === 'familles' && route.childId) return vueEnfant;
   return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante }[route.vue];
 }
 
@@ -163,7 +166,7 @@ function afficherConnexion(route, message) {
       // plutôt que de découvrir le 403 plus tard.
       const hier = hierParis();
       try {
-        await api.stats(route.env, hier, hier);
+        await api.enfants(route.env);
       } catch (e) {
         if (e.status === 401 || e.status === 403) {
           await auth.deconnexion(route.env);

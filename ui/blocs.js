@@ -186,3 +186,29 @@ export function tableEchecsIa(echecs, { avecDate = true, vide = 'Aucun échec IA
 export function lienSeance(env, sessionId, texte, classe) {
   return lien(construireHash({ env, vue: 'seances', sessionId }), classe, texte);
 }
+
+// Objet JSON libre (contenu de bilan, mémoire…) en champs lisibles :
+// texte → paragraphe, liste de valeurs simples → puces, reste → JSON
+// indenté. libelles : { cle: 'Libellé' } (sinon la clé, « _ » → espace).
+export function champsLibres(objet, { libelles = {}, vide = '—' } = {}) {
+  const liste = el('dl', 'champs');
+  const entrees = objet && typeof objet === 'object' && !Array.isArray(objet) ? Object.entries(objet) : [[null, objet]];
+  for (const [cle, valeur] of entrees) {
+    if (cle !== null) liste.append(el('dt', 'eyebrow', libelles[cle] || cle.replace(/_/g, ' ')));
+    const dd = el('dd');
+    if (valeur == null || valeur === '' || (Array.isArray(valeur) && !valeur.length) ||
+      (typeof valeur === 'object' && !Array.isArray(valeur) && !Object.keys(valeur).length)) {
+      dd.append(el('span', 'row-muted', vide));
+    } else if (typeof valeur !== 'object') {
+      dd.append(el('p', 'champ-texte', String(valeur)));
+    } else if (Array.isArray(valeur) && valeur.every((v) => v == null || typeof v !== 'object')) {
+      const ul = el('ul', 'champ-liste');
+      for (const v of valeur) ul.append(el('li', null, String(v)));
+      dd.append(ul);
+    } else {
+      dd.append(el('pre', 'json-bloc', JSON.stringify(valeur, null, 2)));
+    }
+    liste.append(dd);
+  }
+  return liste;
+}

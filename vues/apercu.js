@@ -3,14 +3,12 @@
    (≤ 92 jours civils de Paris), séances et entrées par mode,
    rétention J7 / J30, activité par jour en petits graphes, coûts
    IA avec unités réelles et coûts inconnus jamais comptés zéro.
-   L'ancien tableau par enfant (action `stats`) reste accessible,
-   chargé à la demande.
+   Le détail par enfant est dans Familles.
    ============================================================ */
 
-import { estAnnulation } from '../api.js';
 import { barrePeriode } from '../ui/filtres.js';
 import { carteCout, nomRole, celluleCout } from '../ui/blocs.js';
-import { carteKpi, el, etatChargement, etatErreur, tableau } from '../ui/dom.js';
+import { carteKpi, el, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtEntier } from '../ui/format.js';
 import { grapheBarres } from '../ui/graphe.js';
 import { LIBELLE_ENTREE, LIBELLE_MODE } from '../ui/libelles.js';
@@ -53,7 +51,6 @@ export async function rendre({ route, api, signal }) {
   vue.append(el('h2', 'section-title', 'Rétention'), blocRetention(a.retention));
   vue.append(el('h2', 'section-title', 'Activité par jour'), blocSerie(a.serie));
   if (a.couts) vue.append(sectionCouts(a.couts));
-  vue.append(ancienTableau(route, api, periode));
   return vue;
 }
 
@@ -192,57 +189,4 @@ function sectionCouts(llm) {
     vide: 'Aucun appel sur cette période.',
   }));
   return section;
-}
-
-// ---------- Ancien tableau par enfant (action `stats`, à la demande) ----------
-// `apercu` ne détaille pas l'activité par enfant ; `stats` le fait encore,
-// en attendant la page Familles.
-
-function ancienTableau(route, api, periode) {
-  const details = el('details', 'details-discret ancien-tableau');
-  details.append(el('summary', null, 'Activité par enfant (ancien tableau)'));
-  const zone = el('div');
-  details.append(zone);
-  let charge = false;
-  details.addEventListener('toggle', async () => {
-    if (!details.open || charge) return;
-    charge = true;
-    zone.replaceChildren(etatChargement());
-    try {
-      const [stats, tout] = await Promise.all([
-        api.stats(route.env, periode.from, periode.to),
-        api.stats(route.env, null, null),
-      ]);
-      zone.replaceChildren(tableParEnfant(stats, tout));
-    } catch (e) {
-      if (estAnnulation(e)) return;
-      charge = false;
-      zone.replaceChildren(etatErreur('Tableau indisponible', e.message));
-    }
-  });
-  return details;
-}
-
-function tableParEnfant(stats, tout) {
-  const actifs = new Map(stats.perChild.map((c) => [c.childId, c]));
-  const lignes = tout.perChild.map((c) => actifs.get(c.childId) || { ...c, sessions: 0, exercises: 0, minutes: 0 });
-  for (const c of stats.perChild) if (!lignes.some((l) => l.childId === c.childId)) lignes.push(c);
-  lignes.sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
-  return tableau({
-    classe: 'stats-table',
-    colonnes: [
-      { titre: 'Prénom' },
-      { titre: 'Séances', classe: 'cell-right', largeur: '120px' },
-      { titre: 'Exercices', classe: 'cell-right', largeur: '120px' },
-      { titre: 'Temps passé', classe: 'cell-right', largeur: '140px' },
-    ],
-    lignes: lignes.map((c) => {
-      const inactif = c.sessions === 0;
-      return {
-        classe: inactif ? 'is-inactive' : '',
-        cellules: [c.name, String(c.sessions), String(c.exercises), inactif ? '—' : fmtDuree(c.minutes)],
-      };
-    }),
-    vide: 'Aucun enfant connu.',
-  });
 }

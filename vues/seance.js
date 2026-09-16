@@ -1,16 +1,20 @@
 /* ============================================================
-   Lecteur de séance (action `session_detail`) : bilan, fil des
-   écrans, chronologie technique, acquisitions.
-   Route `…/tour/{llm_generation_id}` : la trace IA d'un tour
-   arrivera au lot 5 ; le lecteur l'annonce en tête.
+   Relecture de séance (action `session_detail`) : bilan, devoir,
+   puis par écran le fil tour par tour (enfant / Ari / système),
+   avec lien vers la trace IA de chaque réplique d'Ari et
+   téléchargement des photos ; dictée de l'écran, chronologie
+   technique repliée, acquisitions.
+   Le mot à mot et les sorties IA sont du contenu non fiable :
+   toujours en textContent.
    ============================================================ */
 
 import { construireHash } from '../router.js';
-import { serialiserDetail } from '../ui/detail.js';
-import { el, etatAVenir, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
+import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
+import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtDureeSec, fmtHorodatagePrecis, fmtJour, fmtJourHeure, pluriel } from '../ui/format.js';
 import {
   LIBELLE_FERMETURE,
+  LIBELLE_INTERACTION,
   LIBELLE_MAITRISE,
   LIBELLE_MODE,
   LIBELLE_ORIGINE,
@@ -19,6 +23,9 @@ import {
   LIBELLE_TYPE_ECRAN,
   LIBELLE_VU_EN_CLASSE,
 } from '../ui/libelles.js';
+import { fmtJourCourt, heureParis } from '../ui/paris.js';
+import { boutonPhoto } from '../ui/photo.js';
+import { descriptionDictee } from './enfant.js';
 
 export const titre = 'Séance';
 
@@ -52,19 +59,16 @@ export async function rendre({ route, api, signal }) {
   const corps = el('div', 'reader-body');
   vue.append(corps);
 
-  if (route.generationId) {
-    corps.append(etatAVenir('Trace IA du tour ' + route.generationId,
-      'La relecture détaillée d’un tour (prompt, réponse, coût) arrivera avec la relecture de séance.', 'lot 5'));
-  }
-
   const bilan = el('section', 'resume-card');
   bilan.append(el('span', 'eyebrow', 'Bilan de séance'),
     el('p', 'resume-text' + (seance.resume ? '' : ' is-empty'), seance.resume || '—'));
   corps.append(bilan);
+  if (seance.homework) corps.append(carteDevoir(seance.homework));
 
   corps.append(el('h2', 'section-title', 'Fil de la séance'));
   if (seance.ecrans.length === 0) corps.append(el('p', 'reader-empty', 'Aucun écran pour cette séance.'));
-  for (const ecran of seance.ecrans) corps.append(carteEcran(ecran));
+  const contexte = { route, api, prenom: seance.childName };
+  for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
   if (seance.evenements.length > 0) corps.append(carteChronologie(seance.evenements));
@@ -74,7 +78,18 @@ export async function rendre({ route, api, signal }) {
   return vue;
 }
 
-function carteEcran(ecran) {
+function carteDevoir(d) {
+  const carte = el('section', 'devoir-card');
+  carte.append(el('span', 'eyebrow', 'Devoir de la séance'), el('p', 'row-name', d.titre || 'Devoir'),
+    el('p', 'row-muted', [
+      d.matiere,
+      d.pourLe ? 'pour le ' + fmtJourCourt(d.pourLe) : null,
+      d.nbConsignes != null ? pluriel(d.nbConsignes, 'consigne') : null,
+    ].filter(Boolean).join(' · ') || '—'));
+  return carte;
+}
+
+function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
   const tete = el('div', 'ecran-head');
   tete.append(el('span', 'ecran-title',
@@ -91,8 +106,80 @@ function carteEcran(ecran) {
   const contenu = el('div', 'ecran-body');
   contenu.append(el('p', 'ecran-synthese' + (ecran.synthese ? '' : ' is-empty'), ecran.synthese || '—'));
   for (const x of ecran.exercices) contenu.append(carteExercice(x));
+  if (ecran.dictee) contenu.append(blocDictee(ecran.dictee));
+  contenu.append(filEcran(ecran, contexte));
   carte.append(tete, contenu);
   return carte;
+}
+
+// ---------- Fil tour par tour ----------
+
+function filEcran(ecran, { route, api, prenom }) {
+  const bloc = el('div', 'fil-ecran');
+  bloc.append(el('span', 'eyebrow', 'Mot à mot'));
+  if (!ecran.interactions.length) {
+    bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cet écran.'));
+    return bloc;
+  }
+  const fil = el('ol', 'bulles');
+  for (const i of ecran.interactions) {
+    if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, api, prenom }));
+    else fil.append(ligneSysteme(i));
+  }
+  bloc.append(fil);
+  return bloc;
+}
+
+function bulle(i, { route, api, prenom }) {
+  const ari = i.locuteur === 'ari';
+  const item = el('li', 'bulle ' + (ari ? 'is-ari' : 'is-enfant'));
+  const qui = el('span', 'bulle-qui', ari ? 'Ari' : prenom);
+  if (!ari && LIBELLE_INTERACTION[i.type]) qui.append(el('span', 'bulle-type', ' · ' + LIBELLE_INTERACTION[i.type]));
+  qui.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''));
+  item.append(qui);
+
+  if (i.texte) item.append(el('p', 'bulle-texte', i.texte));
+  else if (!i.aPhoto) item.append(el('p', 'bulle-texte is-empty', '(sans texte)'));
+
+  const actions = el('div', 'bulle-actions');
+  if (i.aPhoto) actions.append(boutonPhoto({ api, env: route.env, interactionId: i.id }));
+  if (ari && i.generationId) {
+    actions.append(lien(construireHash({ env: route.env, vue: 'seances', sessionId: route.sessionId, generationId: i.generationId, query: route.query }), 'lien-trace', 'Voir la trace IA'));
+  }
+  if (ari && i.modele) actions.append(el('span', 'cell-note mono', i.modele));
+  if (actions.childNodes.length) item.append(actions);
+  return item;
+}
+
+function ligneSysteme(i) {
+  const item = el('li', 'fil-systeme');
+  let texte = LIBELLE_INTERACTION[i.type] || i.type;
+  if (i.type === 'pouce_haut_bas') {
+    const valeur = i.metadata && i.metadata.valeur;
+    texte += valeur === 'haut' ? ' 👍' : valeur === 'bas' ? ' 👎' : '';
+  }
+  if (i.type === 'exercice_resolu' && i.metadata && i.metadata.resultat) {
+    const r = LIBELLE_RESULTAT[i.metadata.resultat];
+    texte += ' — ' + (r ? r.label : i.metadata.resultat);
+  }
+  item.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''), el('span', null, texte));
+  if (i.texte) item.append(el('span', 'fil-systeme-texte', i.texte));
+  const meta = detailEnTexte(i.metadata);
+  if (meta) item.append(el('span', 'fil-systeme-meta mono', meta));
+  return item;
+}
+
+function blocDictee(d) {
+  const bloc = el('div', 'exercise-detail-block dictee-bloc');
+  bloc.append(el('span', 'eyebrow', 'Dictée'));
+  if (d.texte) bloc.append(el('p', 'dictee-texte', '« ' + d.texte + ' »'));
+  const description = descriptionDictee(d);
+  if (description) bloc.append(el('p', 'row-muted', description));
+  if (Array.isArray(d.motsCibles) && d.motsCibles.length) bloc.append(el('p', 'row-muted', 'Mots cibles : ' + d.motsCibles.join(', ')));
+  if (d.ecarts != null && (!Array.isArray(d.ecarts) || d.ecarts.length)) {
+    bloc.append(el('pre', 'json-bloc', typeof d.ecarts === 'object' ? JSON.stringify(d.ecarts, null, 2) : String(d.ecarts)));
+  }
+  return bloc;
 }
 
 function carteExercice(x) {
