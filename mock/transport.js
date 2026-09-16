@@ -6,11 +6,14 @@
    ============================================================ */
 
 import { ApiError } from '../api.js';
+import { apercu } from './apercu.js';
+import { journee } from './journee.js';
+import { sante } from './sante.js';
 import { stats } from './stats.js';
 import { session } from './session.js';
 import { session_detail } from './session_detail.js';
 
-const ACTIONS = { stats, session, session_detail };
+const ACTIONS = { stats, session, session_detail, journee, apercu, sante };
 
 function attendre(ms, signal) {
   return new Promise((resoudre, rejeter) => {

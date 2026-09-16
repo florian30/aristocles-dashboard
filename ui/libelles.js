@@ -63,4 +63,33 @@ export const LIBELLE_ROLE = {
   synthese_ecran: "Synthèse d'écran",
   bilan_session: 'Bilan de séance',
   vision_devoirs: 'Lecture des devoirs',
+  'vision-parser': 'Lecture des devoirs (vision)',
 };
+
+// Clôture d'une séance (`cloture.motif`, § 1.4 du contrat).
+export function libelleCloture(status, cloture) {
+  const motif = cloture && cloture.motif;
+  if (motif === 'menage_complet') return { label: 'Clôturée', cls: 'is-success' };
+  if (motif === 'fermeture_a_froid') return { label: 'Fermée à froid', cls: 'is-fragile' };
+  if (motif) return { label: motif, cls: 'is-muted' };
+  if (status === 'active') return { label: 'En cours', cls: 'is-info' };
+  return { label: 'Non soldée', cls: 'is-muted' };
+}
+
+// Entrées par mode (journal d'usage) : la dictée n'est pas un mode de séance.
+export const LIBELLE_ENTREE = {
+  apprentissage: 'Apprentissage',
+  devoirs: 'Devoirs',
+  dictee: 'Dictée',
+  autre: 'Autre',
+};
+
+export const LIBELLE_INCIDENT = {
+  tour_erreur: 'Erreur de tour',
+  tour_anomalie: 'Anomalie de tour',
+  filet_echec_llm: 'Filet : échec IA',
+  ecriture_echec: 'Échec d’écriture',
+};
+
+export const LIBELLE_PLATEFORME = { ios: 'iOS', android: 'Android', web: 'Web' };
+
