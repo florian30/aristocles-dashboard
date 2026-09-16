@@ -4,7 +4,7 @@
    #/{env}/apercu
    #/{env}/familles            #/{env}/familles/{child_id}
    #/{env}/seances             #/{env}/seances/{session_id}
-   #/{env}/seances/{session_id}/tour/{llm_generation_id}
+   #/{env}/seances/{session_id}/tour/{llm_generation_id}  (trace IA)
    #/{env}/sante
    Une query optionnelle (`?from=…&to=…&child=…`) porte les filtres
    des écrans de liste, pour qu'un rafraîchissement les conserve.
@@ -14,10 +14,9 @@
    ============================================================ */
 
 import { ENV_PAR_DEFAUT, estEnvValide } from './config.js';
+import { estDateCivile } from './ui/paris.js';
 
 export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante'];
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Route : { env, vue, date?, childId?, sessionId?, generationId?, query }
 // `canonique` vaut false quand le hash d'origine doit être réécrit
@@ -39,7 +38,9 @@ export function analyserHash(hash) {
   const route = { env, vue, query };
   let attendus = 2;
   if (vue === 'veille') {
-    route.date = a && DATE_RE.test(a) ? a : null;
+    // Une date inexistante (2026-02-30) est rejetée comme une date mal
+    // formée : route non canonique, main.js ramène à hier.
+    route.date = estDateCivile(a) ? a : null;
     if (route.date) attendus = 3;
   } else if (vue === 'familles') {
     route.childId = a || null;
