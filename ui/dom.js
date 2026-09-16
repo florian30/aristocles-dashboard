@@ -106,3 +106,24 @@ export function repliable({ classe, entete, contenu, ouvert = false }) {
   });
   return carte;
 }
+
+// Bouton « Copier » : texte, ou fonction qui le fournit au clic.
+export function boutonCopier(texte, libelle = 'Copier') {
+  const bouton = el('button', 'bouton bouton-copier', libelle);
+  bouton.type = 'button';
+  let minuteur = null;
+  bouton.addEventListener('click', async (e) => {
+    e.stopPropagation(); // dans un en-tête repliable : ne pas replier
+    try {
+      await navigator.clipboard.writeText(typeof texte === 'function' ? texte() : texte);
+      bouton.textContent = 'Copié';
+    } catch (_) {
+      bouton.textContent = 'Copie impossible';
+    }
+    clearTimeout(minuteur);
+    minuteur = setTimeout(() => { bouton.textContent = libelle; }, 1800);
+  });
+  // Entrée / Espace sur le bouton ne doivent pas atteindre l'en-tête repliable.
+  bouton.addEventListener('keydown', (e) => e.stopPropagation());
+  return bouton;
+}

@@ -63,4 +63,61 @@ export const LIBELLE_ROLE = {
   synthese_ecran: "Synthèse d'écran",
   bilan_session: 'Bilan de séance',
   vision_devoirs: 'Lecture des devoirs',
+  'vision-parser': 'Lecture des devoirs (vision)',
+};
+
+// Clôture d'une séance (`cloture.motif`, § 1.4 du contrat).
+export function libelleCloture(status, cloture) {
+  const motif = cloture && cloture.motif;
+  if (motif === 'menage_complet') return { label: 'Clôturée', cls: 'is-success' };
+  if (motif === 'fermeture_a_froid') return { label: 'Fermée à froid', cls: 'is-fragile' };
+  if (motif) return { label: motif, cls: 'is-muted' };
+  if (status === 'active') return { label: 'En cours', cls: 'is-info' };
+  return { label: 'Non soldée', cls: 'is-muted' };
+}
+
+// Entrées par mode (journal d'usage) : la dictée n'est pas un mode de séance.
+export const LIBELLE_ENTREE = {
+  apprentissage: 'Apprentissage',
+  devoirs: 'Devoirs',
+  dictee: 'Dictée',
+  autre: 'Autre',
+};
+
+export const LIBELLE_INCIDENT = {
+  tour_erreur: 'Erreur de tour',
+  tour_anomalie: 'Anomalie de tour',
+  filet_echec_llm: 'Filet : échec IA',
+  ecriture_echec: 'Échec d’écriture',
+};
+
+export const LIBELLE_PLATEFORME = { ios: 'iOS', android: 'Android', web: 'Web' };
+
+// Types d'interaction du mot à mot (§ 2.3).
+export const LIBELLE_INTERACTION = {
+  message_tuteur: 'Ari',
+  message_enfant_vocal: 'vocal',
+  message_enfant_texte: 'écrit',
+  capture_photo: 'photo des devoirs',
+  capture_description_orale: 'description orale',
+  exercice_presente: 'Exercice présenté',
+  exercice_resolu: 'Exercice résolu',
+  pouce_haut_bas: 'Pouce',
+};
+
+export const LIBELLE_GENRE = { fille: 'fille', garcon: 'garçon', autre: 'autre', non_precise: 'genre non précisé' };
+
+export const LIBELLE_BILAN = { quotidien: 'Bilan quotidien', hebdomadaire: 'Bilan hebdomadaire' };
+
+export const LIBELLE_STATUT_BILAN = {
+  genere: { label: 'Généré', cls: 'is-success' },
+  matiere_insuffisante: { label: 'Matière insuffisante', cls: 'is-muted' },
+};
+
+export const LIBELLE_MEMOIRE = {
+  intelligencesEmergentes: 'Intelligences émergentes',
+  preferencesPedagogiques: 'Préférences pédagogiques',
+  interetsPersonnels: 'Intérêts personnels',
+  contextePersonnel: 'Contexte personnel',
+  niveauDictee: 'Niveau de dictée',
 };

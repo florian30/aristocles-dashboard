@@ -1,10 +1,9 @@
 /* ============================================================
    Aristocles — Données factices partagées par les actions mock
    (schéma socle : écrans + synthèses, bilan de séance,
-   acquisitions, coûts IA — jamais de verbatim). Les dates sont
+   acquisitions, coûts IA ; le mot à mot est dans mock/fil.js). Les dates sont
    relatives à aujourd'hui pour que les filtres restent pertinents.
-   Chaque action (mock/stats.js, mock/session.js,
-   mock/session_detail.js) produit la forme BRUTE de l'Edge, pour
+   Chaque action (mock/session.js, mock/session_detail.js…) produit la forme BRUTE de l'Edge, pour
    que les adaptateurs d'api.js tournent aussi en démo.
    ============================================================ */
 
@@ -18,6 +17,7 @@ export const CHILDREN = [
   { id: 'c5', name: 'Nina', classe: 'CM1' },
   { id: 'c6', name: 'Sacha', classe: 'CM1' },
   { id: 'c7', name: 'Léon', classe: 'CM1' },
+  { id: 'c8', name: 'Jules', classe: 'CE2' }, // inscrit, jamais venu
 ];
 
 // Scénarios de séance : thème, notion principale, bilan rédigé et
@@ -234,6 +234,7 @@ export const SESSIONS = SESSION_SEEDS.map((seed, i) => {
   return {
     id: 'ses-' + String(i + 1).padStart(2, '0'),
     childId,
+    scenarioIdx, // clé du mot à mot factice (mock/fil.js)
     date: dateStr,
     time,
     startedAt: new Date(startMs).toISOString(),
