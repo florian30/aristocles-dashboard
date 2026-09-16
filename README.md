@@ -8,7 +8,7 @@ Tableau de bord interne d'Aristocles (suivi des testeurs). Site statique HTML/CS
 python3 -m http.server 8000
 ```
 
-- **Mode démo (recommandé en local)** : http://localhost:8000/?mock=1. Aucun réseau : la connexion est simulée et accepte n'importe quel e-mail et mot de passe. Un e-mail qui commence par `refuse` simule un compte non autorisé (403).
+- **Mode démo (recommandé en local)** : http://localhost:8000/?mock=1. Un bandeau « DÉMO — données fictives » reste affiché. Aucun réseau : la connexion est simulée et accepte n'importe quel e-mail et mot de passe. Un e-mail qui commence par `refuse` simule un compte non autorisé (403).
 - **Mode réel** : http://localhost:8000/. La connexion passe par Supabase Auth, mais l'Edge `dashboard` n'accepte que l'origine GitHub Pages (CORS). En local, les écrans de données affichent donc « serveur injoignable ».
 
 ## Tests
@@ -36,7 +36,7 @@ L'environnement fait partie de l'URL (prod par défaut) :
 
 ## Accès
 
-Chaque environnement a son propre compte Supabase (e-mail + mot de passe) et sa propre session : on peut être connecté à prod et à dev en même temps. supabase-js garde la session (jetons, jamais le mot de passe) dans le `localStorage`. Chaque appel envoie `POST {url}/functions/v1/dashboard` avec le corps `{action, params}` et les en-têtes `Authorization: Bearer <access_token>` et `apikey: <clé anon>`. Si l'Edge répond 401, l'app revient à la connexion ; si elle répond 403, elle affiche « Ce compte n'est pas autorisé sur <env> ».
+Chaque environnement a son propre compte Supabase (e-mail + mot de passe) et sa propre session : on peut être connecté à prod et à dev en même temps. supabase-js garde la session (jetons, jamais le mot de passe) dans le `sessionStorage` : elle disparaît à la fermeture du navigateur, car l'origine github.io est partagée avec d'autres sites. Au chargement, l'app efface toute session Supabase (`sb-*-auth-token`) restée dans le `localStorage`. Chaque appel envoie `POST {url}/functions/v1/dashboard` avec le corps `{action, params}` et les en-têtes `Authorization: Bearer <access_token>` et `apikey: <clé anon>`. Si l'Edge répond 401, l'app revient à la connexion ; si elle répond 403, elle affiche « Ce compte n'est pas autorisé sur <env> ».
 
 `config.js` ne contient que les clés **anon** (publiques par nature). Aucune clé service_role / secret ne doit entrer dans ce dépôt public.
 

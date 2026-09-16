@@ -40,6 +40,12 @@ const NAVIGATION = [
 
 const racine = document.getElementById('racine');
 const bandeauDev = document.getElementById('bandeau-dev');
+document.getElementById('bandeau-demo').hidden = !MOCK;
+
+function placerBandeaux() {
+  const hauteur = document.getElementById('bandeaux').getBoundingClientRect().height;
+  document.body.style.setProperty('--hauteur-bandeaux', hauteur + 'px');
+}
 
 let controleur = null;
 let numeroRendu = 0;
@@ -71,7 +77,7 @@ async function rendreRoute(route) {
 
   const dev = route.env === 'dev';
   bandeauDev.hidden = !dev;
-  document.body.classList.toggle('env-dev', dev);
+  placerBandeaux();
 
   const session = await auth.session(route.env);
   if (!aJour()) return;
@@ -110,7 +116,6 @@ async function rendreRoute(route) {
 async function gererErreur(e, route, session, zone) {
   if (e.status === 401) {
     await auth.deconnexion(route.env);
-    api.viderCache(route.env);
     afficherConnexion(route, 'Session expirée ou refusée — reconnectez-vous.');
     return;
   }
@@ -139,6 +144,9 @@ async function gererErreur(e, route, session, zone) {
 // ---------- Connexion ----------
 
 function afficherConnexion(route, message) {
+  // Tout retour à la connexion (déconnexion, 401, session expirée en
+  // silence) vide le cache de l'env : rien ne survit d'un compte à l'autre.
+  api.viderCache(route.env);
   ecranCourant = null;
   document.title = 'Connexion · ' + route.env + ' · Aristocles';
   racine.replaceChildren(vueConnexion.rendre({
@@ -177,8 +185,7 @@ function boutonDeconnexion(route, libelle) {
   bouton.type = 'button';
   bouton.addEventListener('click', async () => {
     await auth.deconnexion(route.env);
-    api.viderCache(route.env);
-    naviguer(route);
+    naviguer(route); // → écran de connexion, qui vide le cache
   });
   return bouton;
 }

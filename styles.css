@@ -102,11 +102,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.55; }
   color: var(--ink);
 }
 
-/* ---- Bandeau bac à sable (env dev) ---- */
-.bandeau-dev {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+/* ---- Bandeaux : démo (?mock=1) et bac à sable (env dev) ---- */
+.bandeaux { position: sticky; top: 0; z-index: 20; }
+.bandeau {
   background: var(--sandbox);
   color: #FFFFFF;
   text-align: center;
@@ -115,7 +113,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.55; }
   letter-spacing: 0.14em;
   padding: 6px 16px;
 }
-body.env-dev .topbar { top: 31px; }
+.bandeau-demo { background: var(--info); }
 
 /* ---- Boutons ---- */
 .bouton {
@@ -157,7 +155,7 @@ body.env-dev .topbar { top: 31px; }
 
 /* ---- Connexion ---- */
 .login-screen {
-  min-height: calc(100vh - 31px);
+  min-height: calc(100vh - var(--hauteur-bandeaux, 0px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -205,7 +203,7 @@ body.env-dev .topbar { top: 31px; }
   border-bottom: 1px solid var(--border);
   background: var(--cream);
   position: sticky;
-  top: 0;
+  top: var(--hauteur-bandeaux, 0px); /* sous les bandeaux visibles, hauteur posée par main.js */
   z-index: 10;
 }
 .topbar-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
