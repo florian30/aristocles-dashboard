@@ -7,13 +7,16 @@
 
 import { ApiError } from '../api.js';
 import { apercu } from './apercu.js';
+import { enfant, enfants } from './familles.js';
 import { journee } from './journee.js';
+import { photo } from './photo.js';
 import { sante } from './sante.js';
-import { stats } from './stats.js';
 import { session } from './session.js';
 import { session_detail } from './session_detail.js';
+import { tour } from './tour.js';
 
-const ACTIONS = { stats, session, session_detail, journee, apercu, sante };
+// `stats` n'existe plus côté front : une action inconnue répond 400.
+const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo };
 
 function attendre(ms, signal) {
   return new Promise((resoudre, rejeter) => {
@@ -33,8 +36,8 @@ export function transportMock({ estConnecte, estAutorise, delaiMs = 250 }) {
     if (!estAutorise(env)) throw new ApiError('Compte non autorisé.', 403);
     const handler = ACTIONS[action];
     if (!handler) throw new ApiError('Action inconnue : ' + action, 400);
-    const donnees = handler(params);
-    if (donnees === undefined) throw new ApiError('Séance introuvable.', 404);
+    const donnees = handler(params); // un handler peut lever sa propre ApiError
+    if (donnees === undefined) throw new ApiError('Introuvable.', 404);
     return donnees;
   };
 }

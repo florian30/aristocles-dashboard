@@ -8,6 +8,7 @@
    ============================================================ */
 
 import { CHILDREN, SESSIONS } from './donnees.js';
+import { devoirBrut, dicteeBrute } from './fil.js';
 import { aujourdhuiParis, debutJourParisMs, decalerJour, ecartJours, jourParis } from '../ui/paris.js';
 
 const enfantParId = Object.fromEntries(CHILDREN.map((c) => [c.id, c]));
@@ -34,7 +35,7 @@ function joursAvant(date) {
   return ecartJours(date, aujourdhuiParis());
 }
 
-function resumeSeance(s, i) {
+export function resumeSeance(s, i) {
   const exercices = s.ecrans.flatMap((e) => e.exercices);
   const compte = (r) => exercices.filter((x) => x.resultat === r).length;
   const haut = s.ecrans.filter((e) => e.pouce === 'haut').length + (i % 3 === 1 ? 1 : 0);
@@ -112,29 +113,9 @@ export function journeeBrute(date) {
     const ecrans = (usage ? usage.ecrans : miennes.length ? [['accueil', 1, 9000 + 1000 * miennes.length]] : [])
       .map(([ecran, nb, duree]) => ({ ecran, nb, duree_totale_ms: duree }))
       .sort((a, b) => b.nb - a.nb || a.ecran.localeCompare(b.ecran));
-    const devoirs = miennes.filter(({ s }) => s.mode === 'devoirs').map(({ s }) => ({
-      id: 'hw-' + s.id,
-      session_id: s.id,
-      pour_le: decalerJour(date, 1),
-      matiere: 'français',
-      titre: s.theme + ' — exercices 3 et 4 p. 58',
-      nb_consignes: 2,
-      created_at: new Date(new Date(s.startedAt).getTime() + 30000).toISOString(),
-    }));
-    // Une dictée d'entraînement hier (premier enfant en séance), pour montrer le bloc.
-    const dictees = ja === 1 && seancesDuJour.length && childId === seancesDuJour[0].s.childId ? [{
-      id: 'dic-' + miennes[0].s.id,
-      ecran_id: 'ecr-' + miennes[0].s.id + '-9',
-      origine: 'entrainement',
-      texte_reference: 'Les enfants ont ramassé des feuilles mortes dans le jardin.',
-      mots_cibles: ['ramassé', 'feuilles', 'mortes'],
-      niveau_difficulte: 'moyen',
-      validation_status: 'valide',
-      validation_tentatives: 2,
-      ecarts_detectes: [{ attendu: 'ramassé', lu: 'ramasser' }],
-      created_at: new Date(new Date(miennes[0].s.startedAt).getTime() + 15 * 60000).toISOString(),
-      session_id: miennes[0].s.id,
-    }] : [];
+    const devoirs = miennes.map(({ s }) => devoirBrut(s)).filter(Boolean);
+    // Une dictée d'entraînement hier (première séance du jour), pour montrer le bloc.
+    const dictees = miennes.map(({ s }) => dicteeBrute(s)).filter(Boolean);
     return {
       child_id: childId,
       first_name: c.name,

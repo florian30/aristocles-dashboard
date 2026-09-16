@@ -93,3 +93,31 @@ export const LIBELLE_INCIDENT = {
 
 export const LIBELLE_PLATEFORME = { ios: 'iOS', android: 'Android', web: 'Web' };
 
+// Types d'interaction du mot à mot (§ 2.3).
+export const LIBELLE_INTERACTION = {
+  message_tuteur: 'Ari',
+  message_enfant_vocal: 'vocal',
+  message_enfant_texte: 'écrit',
+  capture_photo: 'photo des devoirs',
+  capture_description_orale: 'description orale',
+  exercice_presente: 'Exercice présenté',
+  exercice_resolu: 'Exercice résolu',
+  pouce_haut_bas: 'Pouce',
+};
+
+export const LIBELLE_GENRE = { fille: 'fille', garcon: 'garçon', autre: 'autre', non_precise: 'genre non précisé' };
+
+export const LIBELLE_BILAN = { quotidien: 'Bilan quotidien', hebdomadaire: 'Bilan hebdomadaire' };
+
+export const LIBELLE_STATUT_BILAN = {
+  genere: { label: 'Généré', cls: 'is-success' },
+  matiere_insuffisante: { label: 'Matière insuffisante', cls: 'is-muted' },
+};
+
+export const LIBELLE_MEMOIRE = {
+  intelligencesEmergentes: 'Intelligences émergentes',
+  preferencesPedagogiques: 'Préférences pédagogiques',
+  interetsPersonnels: 'Intérêts personnels',
+  contextePersonnel: 'Contexte personnel',
+  niveauDictee: 'Niveau de dictée',
+};

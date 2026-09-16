@@ -14,15 +14,18 @@ export const titre = 'Séances';
 
 export async function rendre({ route, api, signal }) {
   const plage = plageDepuisQuery(route.query);
-  const [seances, tout] = await Promise.all([
+  const [seances, { enfants }] = await Promise.all([
     api.sessions(route.env, plage.from, plage.to, route.query.child, { signal }),
-    api.stats(route.env, null, null, { signal }), // liste des enfants connus
+    api.enfants(route.env, null, null, { signal }), // liste des enfants inscrits
   ]);
 
   const vue = el('div', 'vue vue-seances');
   const tete = el('div', 'page-head');
   tete.append(el('h1', 'page-title', titre), el('span', 'page-count', pluriel(seances.length, 'séance')));
-  vue.append(tete, barreFiltres(route, { enfants: tout.perChild }));
+  vue.append(tete, barreFiltres(route, {
+    enfants: enfants.map((e) => ({ childId: e.childId, name: e.prenom }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+  }));
 
   vue.append(tableau({
     classe: 'sessions-table',
