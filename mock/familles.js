@@ -57,7 +57,8 @@ export function enfants(params = {}) {
       return {
         ...identite(c),
         derniere_activite: miennes[0]?.s.startedAt || null,
-        seances: miennes.length,
+        // Hors dictées (DICT-12b) : une dictée a sa rubrique.
+        seances: miennes.filter(({ s }) => s.mode !== 'dictee').length,
         notions_acquises: nbAcquises(c.id),
       };
     }).sort((a, b) => a.first_name.localeCompare(b.first_name)),

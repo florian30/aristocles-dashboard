@@ -10,6 +10,7 @@
 
 import { construireHash } from '../router.js';
 import { champsLibres, tableVersions } from '../ui/blocs.js';
+import { listeDictees } from '../ui/dictee.js';
 import { boutonCopier, el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { barrePeriode } from '../ui/filtres.js';
 import { fmtDureeSec, fmtEntier, pluriel } from '../ui/format.js';
@@ -52,7 +53,8 @@ export async function rendre({ route, api, signal }) {
       'Une photo est effacée automatiquement au bout de 90 jours : on ne le découvre qu’au téléchargement.'),
     section('Maîtrise par notion', fiche.maitrise.length, tableMaitrise(fiche.maitrise), 'État courant, quelle que soit la période.'),
     section('Devoirs', fiche.devoirs.length, listeDevoirs(fiche.devoirs, env)),
-    section('Dictées', fiche.dictees.length, listeDictees(fiche.dictees, env)),
+    section('Dictées', fiche.dictees.length, blocDictees(fiche.dictees, env),
+      'Chaque passage de dictée ouvre une séance en mode Dictée ; le compteur de séances de Familles ne les compte pas.'),
     section('Bilans parent', fiche.bilans.length, listeBilans(fiche.bilans)),
     section('Conversations parent', fiche.conversationsParent.length, listeConversations(fiche.conversationsParent, id.prenom)),
     section('Mémoire', null, blocMemoire(fiche.memoire), 'Profil extrait par l’IA au fil des séances (état courant).'),
@@ -195,29 +197,9 @@ function listeDevoirs(devoirs, env) {
   return liste;
 }
 
-export function descriptionDictee(d) {
-  const ecarts = Array.isArray(d.ecarts) ? d.ecarts.length : typeof d.ecarts === 'number' ? d.ecarts : null;
-  return [
-    d.origine,
-    d.niveau != null ? 'niveau ' + d.niveau : null,
-    d.validation,
-    d.tentatives != null ? pluriel(d.tentatives, 'tentative') : null,
-    ecarts != null ? pluriel(ecarts, 'écart') : null,
-  ].filter(Boolean).join(' · ');
-}
-
-function listeDictees(dictees, env) {
+function blocDictees(dictees, env) {
   if (!dictees.length) return vide('Aucune dictée sur la période.');
-  const liste = el('ul', 'liste-simple');
-  for (const d of dictees) {
-    const li = el('li');
-    const texte = d.texte ? '« ' + d.texte + ' »' : 'Dictée';
-    li.append(d.sessionId ? lien(construireHash({ env, vue: 'seances', sessionId: d.sessionId }), 'dictee-texte', texte) : el('span', 'dictee-texte', texte));
-    li.append(el('span', 'row-muted', descriptionDictee(d)));
-    if (Array.isArray(d.motsCibles) && d.motsCibles.length) li.append(el('span', 'row-muted', 'Mots cibles : ' + d.motsCibles.join(', ')));
-    liste.append(li);
-  }
-  return liste;
+  return listeDictees(dictees, { env, avecJour: true });
 }
 
 // ---------- Bilans et conversations parent ----------

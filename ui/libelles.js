@@ -4,7 +4,7 @@
    affichée telle quelle (contrat additif côté Edge).
    ============================================================ */
 
-export const LIBELLE_MODE = { devoirs: 'Devoirs', entrainement: 'Entraînement' };
+export const LIBELLE_MODE = { devoirs: 'Devoirs', entrainement: 'Entraînement', dictee: 'Dictée' };
 
 export const LIBELLE_STATUT = { active: 'En cours', archivee: 'Archivée' };
 

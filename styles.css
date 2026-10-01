@@ -359,6 +359,7 @@ a.table-row:hover { background: var(--surface-raised); }
 .mode-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 .mode-dot.is-entrainement { background: var(--olive-light); }
 .mode-dot.is-devoirs { background: var(--info); }
+.mode-dot.is-dictee { background: var(--terracotta); }
 .table-row.is-inactive > * { color: var(--ink-placeholder); }
 .is-unknown { color: var(--terracotta); font-style: italic; }
 .table-empty { padding: 28px 22px; font-size: 14px; color: var(--ink-soft); }
@@ -572,6 +573,20 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .liste-simple li { display: flex; flex-direction: column; gap: 1px; font-size: 14px; }
 .liste-simple .row-muted { font-size: 13px; }
 .dictee-texte { font-style: italic; }
+.liste-dictees { gap: 14px; }
+.liste-dictees li + li { padding-top: 12px; border-top: 1px solid var(--border-soft); }
+.dictee-item { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.dictee-item p { margin: 0; }
+.dictee-item > .row-muted { font-size: 13px; }
+.dictee-tete { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-variant-numeric: tabular-nums; }
+.dictee-tete .row-muted { font-size: 13px; }
+.dictee-origine { font-weight: 500; }
+.dictee-lien { margin-left: auto; font-size: 13px; }
+.dictee-item .dictee-texte { line-height: 1.5; }
+.dictee-ligne { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-size: 13.5px; }
+.dictee-ligne .eyebrow { min-width: 64px; }
+.dictees-apercu { margin-top: 8px; }
+.dictees-apercu .kpi-grid { margin-bottom: 8px; }
 
 /* Blocs techniques */
 .technique { margin-top: 8px; }

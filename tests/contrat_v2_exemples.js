@@ -136,8 +136,16 @@ export const APERCU = {
     "total": 2,
     "par_mode": {
       "devoirs": 1,
-      "entrainement": 1
+      "entrainement": 1,
+      "dictee": 0
     }
+  },
+  "dictees": {
+    "lancees": 0,
+    "finies": 0,
+    "non_corrigees": 0,
+    "echecs_generation": 0,
+    "taux_echec_generation": null
   },
   "minutes": 19,
   "exercices": {
