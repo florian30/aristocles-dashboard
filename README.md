@@ -25,8 +25,8 @@ L'environnement fait partie de l'URL (prod par défaut) :
 
 | Route | Écran |
 |---|---|
-| `#/{env}/veille/{AAAA-MM-JJ}` | La veille (page d'accueil, action `journee`) ; sans date = hier à Paris |
-| `#/{env}/apercu` | Vue d'ensemble (action `apercu`) |
+| `#/{env}/veille/{AAAA-MM-JJ}` | La veille (page d'accueil, action `journee`) : séances, devoirs, dictées de chaque enfant ; sans date = hier à Paris |
+| `#/{env}/apercu` | Vue d'ensemble (action `apercu`), dont la rubrique Dictées et la part des séances en mode Dictée |
 | `#/{env}/familles` | Familles (action `enfants`) : e-mail du parent, dernière activité, séances, étoiles ; tri par dernière activité |
 | `#/{env}/familles/{child_id}` | Fiche enfant (action `enfant`) : séances, photos de devoirs, maîtrise, devoirs, dictées, bilans et conversations parent, mémoire, écrans, versions ; 92 jours par défaut |
 | `#/{env}/seances`, `#/{env}/seances/{session_id}` | Liste des séances (`session`), relecture tour par tour (`session_detail`) |
@@ -38,6 +38,8 @@ L'environnement fait partie de l'URL (prod par défaut) :
 **Jours de Paris.** Le serveur compte en jour civil Europe/Paris : « hier », les bornes envoyées à `apercu`/`sante` (`ui/paris.js`) et les heures affichées suivent Paris, quel que soit le fuseau de la machine. Un coût IA inconnu s'affiche « inconnu » (jamais 0 €), avec le nombre d'appels concernés.
 
 **Photos de devoirs.** Le bouton « Télécharger » appelle l'action `photo` à chaque clic (URL signée de 5 minutes, jamais mise en cache, jamais affichée ni placée dans le hash) puis déclenche le téléchargement (`ui/photo.js`). Une photo purgée (404 `photo_purgee`, 90 jours) affiche « Photo effacée (purge automatique) ». En démo, le fichier est une image SVG factice et la seconde photo de chaque séance de devoirs est purgée.
+
+**Dictées.** Chaque dictée (`ui/dictee.js`, partagé par La veille, la fiche enfant et la relecture de séance) montre l'heure, l'origine, la classe, l'étape (finie, à finir, non corrigée, échec), le texte dicté, les fautes comptées et réglées avec les règles revues, et le journal d'étapes compté par type. Une dictée sans classe vient de l'ancien flux : seule son étape « Ancien flux » est signalée. Tant que l'Edge d'un environnement ne rend pas ces champs (DICT-12), la partie concernée n'est simplement pas affichée.
 
 **Contenu non fiable.** Le mot à mot de l'enfant, les messages des parents et les sorties des modèles sont affichés uniquement par `textContent` (aucun `innerHTML` dans le dépôt).
 
@@ -58,6 +60,7 @@ api.js          transport HTTP, cache 5 min par (env, action, params), adaptateu
 router.js       analyse et fabrication des hash
 ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de Paris,
                 période, graphe SVG, blocs techniques partagés, téléchargement de photo
+ui/dictee.js    rubrique Dictée (libellés purs + carte)
 vues/           une vue par fichier (enfant.js : fiche, tour.js : trace IA)
 mock/           données factices par action (formes brutes de l'Edge) ;
                 fil.js : mot à mot, photos, devoirs, dictées, traces IA

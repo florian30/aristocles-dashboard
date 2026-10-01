@@ -101,7 +101,9 @@ Deno.test('adaptateur session_detail : dictée d’un écran et tri des interact
   d.ecrans[1].dictee = { id: 'dic-1', ecran_id: 'e2e2e2e2-e2e2-e2e2-e2e2-e2e2e2e2e2e2', origine: 'entrainement', texte_reference: 'Le chat dort.', mots_cibles: ['chat'], niveau_difficulte: 'facile', validation_status: 'valide', validation_tentatives: 1, ecarts_detectes: [], created_at: '2026-07-10T17:15:00Z' };
   const r = adapterDetail(d);
   assertEquals(r.ecrans[0].interactions.map((i) => i.position), [1, 2, 3]);
-  assertEquals(r.ecrans[1].dictee, { id: 'dic-1', sessionId: null, origine: 'entrainement', texte: 'Le chat dort.', motsCibles: ['chat'], niveau: 'facile', validation: 'valide', tentatives: 1, ecarts: [] });
+  assertEquals(r.ecrans[1].dictee, { id: 'dic-1', sessionId: null, origine: 'entrainement', texte: 'Le chat dort.', motsCibles: ['chat'], niveau: 'facile', validation: 'valide', tentatives: 1, ecarts: [],
+    // Edge sans les champs DICT-12 : tout à null, rien d'inventé.
+    classe: null, etape: null, creeAt: '2026-07-10T17:15:00Z', heure: '19:15', finieAt: null, nbFautes: null, reglesRevues: null, evenements: null });
 });
 
 Deno.test('adaptateur tour : avec trace, coût connu', () => {
@@ -270,7 +272,9 @@ Deno.test('mock : trace purgée sur une séance d’au moins 7 jours, dictée d�
   }
   assert(purgee, 'au moins un tour sans trace');
   assertEquals(purgee.promptSysteme, null);
-  let dictees = 0;
-  for (const s of liste) dictees += (await api.detail('prod', s.id)).ecrans.filter((e) => e.dictee).length;
-  assertEquals(dictees, 1);
+  const dictees = [];
+  for (const s of liste) dictees.push(...(await api.detail('prod', s.id)).ecrans.filter((e) => e.dictee).map((e) => e.dictee));
+  // Une dictée de l'ancien flux (classe null) + six passages du nouveau flux.
+  assertEquals(dictees.length, 7);
+  assertEquals(dictees.filter((d) => d.classe == null).length, 1);
 });

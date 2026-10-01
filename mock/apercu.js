@@ -45,6 +45,19 @@ export function coutsDepuisIa(blocs) {
   };
 }
 
+// Rubrique Dictée (§ 2.4, D20) : nouveau flux seulement (classe non nulle).
+function apercuDictees(dictees) {
+  const nouvelles = dictees.filter((d) => d.classe != null);
+  const echecs = nouvelles.filter((d) => d.validation_status === 'rejete').length;
+  return {
+    lancees: nouvelles.length,
+    finies: nouvelles.filter((d) => d.etape === 'fin').length,
+    non_corrigees: nouvelles.filter((d) => d.etape === 'non_corrigee').length,
+    echecs_generation: echecs,
+    taux_echec_generation: nouvelles.length ? Math.round((echecs / nouvelles.length) * 100) / 100 : null,
+  };
+}
+
 export function apercu(params = {}) {
   const jours = joursDeLaPlage(params).map((j) => journeeBrute(j));
   const enfants = new Set();
@@ -54,7 +67,7 @@ export function apercu(params = {}) {
     const duJour = j.enfants.flatMap((c) => c.seances);
     j.enfants.forEach((c) => enfants.add(c.child_id));
     seances.push(...duJour);
-    for (const s of duJour) entrees[s.mode === 'devoirs' ? 'devoirs' : 'apprentissage'] += 1;
+    for (const s of duJour) if (s.mode !== 'dictee') entrees[s.mode === 'devoirs' ? 'devoirs' : 'apprentissage'] += 1;
     entrees.dictee += j.enfants.reduce((a, c) => a + c.dictees.length, 0);
     entrees.autre += j.enfants.filter((c) => !c.seances.length).length;
     return {
@@ -82,8 +95,10 @@ export function apercu(params = {}) {
       par_mode: {
         devoirs: seances.filter((s) => s.mode === 'devoirs').length,
         entrainement: seances.filter((s) => s.mode === 'entrainement').length,
+        dictee: seances.filter((s) => s.mode === 'dictee').length,
       },
     },
+    dictees: apercuDictees(jours.flatMap((j) => j.enfants.flatMap((c) => c.dictees))),
     minutes: serie.reduce((a, p) => a + p.minutes, 0),
     exercices: ex,
     ouvertures_app: serie.reduce((a, p) => a + p.ouvertures_app, 0),

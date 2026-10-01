@@ -296,8 +296,13 @@ export function adapterDevoir(d) {
   };
 }
 
+const nombreFini = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
 // Dictée (§ 2.5 `dictees[]` ; sans `session_id` dans `session_detail`).
+// Champs DICT-12 (classe, etape, fautes, journal) : null tant que l'Edge
+// ne les rend pas, et la vue n'affiche alors pas la partie concernée.
 export function adapterDictee(d) {
+  const ev = d.evenements_par_type;
   return {
     id: d.id,
     sessionId: d.session_id || null,
@@ -308,6 +313,28 @@ export function adapterDictee(d) {
     validation: d.validation_status || null,
     tentatives: d.validation_tentatives ?? null,
     ecarts: d.ecarts_detectes ?? null,
+    classe: d.classe || null,
+    etape: d.etape || null,
+    creeAt: d.created_at || null,
+    heure: d.created_at ? heureParis(d.created_at) : null,
+    finieAt: d.finie_at || null,
+    nbFautes: nombreFini(d.nb_fautes_comptees),
+    reglesRevues: Array.isArray(d.regles_revues) ? d.regles_revues.filter((r) => typeof r === 'string') : null,
+    evenements: ev && typeof ev === 'object' && !Array.isArray(ev)
+      ? Object.fromEntries(Object.entries(ev).filter(([, n]) => nombreFini(n) != null))
+      : null,
+  };
+}
+
+// Rubrique Dictée de l'aperçu (§ 2.4 `dictees`, D20) ; null si absente.
+export function adapterApercuDictees(x) {
+  if (!x || typeof x !== 'object') return null;
+  return {
+    lancees: nombreFini(x.lancees) ?? 0,
+    finies: nombreFini(x.finies) ?? 0,
+    nonCorrigees: nombreFini(x.non_corrigees) ?? 0,
+    echecsGeneration: nombreFini(x.echecs_generation) ?? 0,
+    tauxEchecGeneration: nombreFini(x.taux_echec_generation),
   };
 }
 
@@ -338,7 +365,8 @@ export function adapterJournee(data) {
     seances: tableau(c.seances).map(adapterResumeSeance)
       .sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt))),
     devoirs: tableau(c.devoirs).map(adapterDevoir),
-    dictees: tableau(c.dictees).map(adapterDictee),
+    dictees: tableau(c.dictees).map(adapterDictee)
+      .sort((a, b) => (a.creeAt || '').localeCompare(b.creeAt || '')),
     ecrans: tableau(c.ecrans).map((e) => ({ ecran: e.ecran, nb: e.nb || 0, dureeMs: e.duree_totale_ms || 0 })),
     ouvertures: c.ouvertures_app || 0,
     erreursClient: tableau(c.erreurs_client).map(adapterErreurClient),
@@ -392,6 +420,8 @@ export function adapterApercu(data) {
       total: data.seances?.total || 0,
       parMode: { devoirs: 0, entrainement: 0, ...(data.seances?.par_mode || {}) },
     },
+    // Absente tant que l'Edge de l'environnement n'a pas la rubrique Dictée.
+    dictees: adapterApercuDictees(data.dictees),
     minutes: data.minutes || 0,
     exercices: { total: ex.total || 0, succes: ex.succes || 0, fragile: ex.fragile || 0, autres: ex.autres || 0 },
     ouvertures: data.ouvertures_app || 0,
@@ -483,7 +513,8 @@ export function adapterEnfant(data) {
     })),
     notionsAcquises: data.notions_acquises || 0,
     devoirs: tableau(data.devoirs).map(adapterDevoir),
-    dictees: tableau(data.dictees).map(adapterDictee),
+    dictees: tableau(data.dictees).map(adapterDictee)
+      .sort((a, b) => (b.creeAt || '').localeCompare(a.creeAt || '')),
     bilans: tableau(data.bilans).map((b) => ({
       id: b.id,
       type: b.type || null,

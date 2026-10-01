@@ -7,6 +7,7 @@
 
 import { construireHash, naviguer } from '../router.js';
 import { blocIncidents, carteCout, listeErreursClient, tableEchecsIa, tableIa, tableVersions } from '../ui/blocs.js';
+import { listeDictees } from '../ui/dictee.js';
 import { carteKpi, el, lien, tableau } from '../ui/dom.js';
 import { fmtDureeSec, fmtEntier, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE, libelleCloture } from '../ui/libelles.js';
@@ -123,6 +124,7 @@ function carteEnfant(e, env) {
   const resume = [
     e.seances.length ? pluriel(e.seances.length, 'séance') : 'Aucune séance',
     e.seances.length ? minutes + ' min' : null,
+    e.dictees.length ? pluriel(e.dictees.length, 'dictée') : null,
     pluriel(e.ouvertures, 'ouverture') + ' d’app',
     e.erreursClient.length ? pluriel(e.erreursClient.reduce((a, x) => a + x.nb, 0), 'erreur') : null,
   ].filter(Boolean).join(' · ');
@@ -133,7 +135,7 @@ function carteEnfant(e, env) {
   if (e.seances.length) corps.append(tableSeances(e.seances, env));
 
   if (e.devoirs.length) corps.append(sousBloc('Devoirs', listeDevoirs(e.devoirs, env)));
-  if (e.dictees.length) corps.append(sousBloc('Dictées', listeDictees(e.dictees, env)));
+  if (e.dictees.length) corps.append(sousBloc('Dictées', listeDictees(e.dictees, { env })));
   if (e.ecrans.length) corps.append(sousBloc('Écrans consultés hors séance', tableEcrans(e.ecrans)));
   if (e.erreursClient.length) corps.append(sousBloc('Erreurs client', listeErreursClient(e.erreursClient)));
   carte.append(corps);
@@ -212,28 +214,6 @@ function listeDevoirs(devoirs, env) {
         d.nbConsignes != null ? pluriel(d.nbConsignes, 'consigne') : null,
       ].filter(Boolean).join(' · ')),
     );
-    liste.append(li);
-  }
-  return liste;
-}
-
-const nombreOuListe = (v) => (Array.isArray(v) ? v.length : typeof v === 'number' ? v : null);
-
-function listeDictees(dictees, env) {
-  const liste = el('ul', 'liste-simple');
-  for (const d of dictees) {
-    const li = el('li');
-    const texte = d.texte ? '« ' + d.texte + ' »' : 'Dictée';
-    li.append(d.sessionId ? lien(construireHash({ env, vue: 'seances', sessionId: d.sessionId }), 'dictee-texte', texte) : el('span', 'dictee-texte', texte));
-    const ecarts = nombreOuListe(d.ecarts);
-    li.append(el('span', 'row-muted', [
-      d.origine,
-      d.niveau != null ? 'niveau ' + d.niveau : null,
-      d.validation,
-      d.tentatives != null ? pluriel(d.tentatives, 'tentative') : null,
-      ecarts != null ? pluriel(ecarts, 'écart') : null,
-    ].filter(Boolean).join(' · ')));
-    if (Array.isArray(d.motsCibles) && d.motsCibles.length) li.append(el('span', 'row-muted', 'Mots cibles : ' + d.motsCibles.join(', ')));
     liste.append(li);
   }
   return liste;

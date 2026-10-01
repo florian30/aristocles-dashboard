@@ -8,6 +8,7 @@
 
 import { barrePeriode } from '../ui/filtres.js';
 import { carteCout, nomRole, celluleCout } from '../ui/blocs.js';
+import { partDictee } from '../ui/dictee.js';
 import { carteKpi, el, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtEntier } from '../ui/format.js';
 import { grapheBarres } from '../ui/graphe.js';
@@ -43,10 +44,13 @@ export async function rendre({ route, api, signal }) {
   modes.append(
     blocRepartition('Séances par mode', 'Séances commencées sur la période.',
       Object.entries(a.seances.parMode).map(([cle, n]) => ({ libelle: LIBELLE_MODE[cle] || cle, n, cle }))),
-    blocRepartition('Entrées par mode', 'Choix faits à l’ouverture (journal d’usage). La dictée n’est pas un mode de séance : elle est comptée ici à part.',
+    blocRepartition('Entrées par mode', 'Choix faits à l’ouverture (journal d’usage).',
       Object.entries(a.entreesParMode).map(([cle, n]) => ({ libelle: LIBELLE_ENTREE[cle] || cle, n, cle }))),
   );
   vue.append(modes);
+
+  const dictees = sectionDictees(a);
+  if (dictees) vue.append(dictees);
 
   vue.append(el('h2', 'section-title', 'Rétention'), blocRetention(a.retention));
   vue.append(el('h2', 'section-title', 'Activité par jour'), blocSerie(a.serie));
@@ -72,6 +76,38 @@ function blocRepartition(titreBloc, explication, lignes) {
   }
   bloc.append(liste);
   return bloc;
+}
+
+// ---------- Dictées (D20) ----------
+
+// Rien si l'Edge ne rend ni la rubrique ni la part dictée des séances.
+function sectionDictees(a) {
+  const d = a.dictees;
+  const part = partDictee(a.seances);
+  if (!d && !part) return null;
+  const section = el('section', 'dictees-apercu');
+  section.append(el('h2', 'section-title', 'Dictées'));
+  const kpis = el('div', 'kpi-grid kpi-grid-jour');
+  if (d) {
+    const pctLancees = (n) => (d.lancees ? Math.round((n / d.lancees) * 100) + ' % des lancées' : null);
+    const echecs = carteKpi('Échecs de génération', fmtEntier(d.echecsGeneration),
+      d.tauxEchecGeneration == null ? 'aucune dictée lancée' : Math.round(d.tauxEchecGeneration * 100) + ' % des lancées · texte refusé');
+    if (d.echecsGeneration) echecs.classList.add('is-alerte');
+    kpis.append(
+      carteKpi('Dictées lancées', fmtEntier(d.lancees)),
+      carteKpi('Finies', fmtEntier(d.finies), pctLancees(d.finies)),
+      carteKpi('Non corrigées', fmtEntier(d.nonCorrigees), pctLancees(d.nonCorrigees)),
+      echecs,
+    );
+  }
+  if (part) kpis.append(carteKpi('Part dictée des séances', part.valeur, part.note));
+  section.append(kpis);
+  if (d) {
+    section.append(el('p', 'bloc-explication',
+      'Nouveau flux seulement : dictées créées sur la période. « Non corrigée » : la dictée s’est arrêtée sans correction ; ' +
+      '« échec de génération » : texte refusé par la validation. Une dictée ne rapporte pas d’étoile.'));
+  }
+  return section;
 }
 
 // ---------- Rétention ----------

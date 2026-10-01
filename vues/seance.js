@@ -10,6 +10,7 @@
 
 import { construireHash } from '../router.js';
 import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
+import { carteDictee } from '../ui/dictee.js';
 import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtDureeSec, fmtHorodatagePrecis, fmtJour, fmtJourHeure, pluriel } from '../ui/format.js';
 import {
@@ -25,7 +26,6 @@ import {
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
 import { boutonPhoto } from '../ui/photo.js';
-import { descriptionDictee } from './enfant.js';
 
 export const titre = 'Séance';
 
@@ -171,11 +171,7 @@ function ligneSysteme(i) {
 
 function blocDictee(d) {
   const bloc = el('div', 'exercise-detail-block dictee-bloc');
-  bloc.append(el('span', 'eyebrow', 'Dictée'));
-  if (d.texte) bloc.append(el('p', 'dictee-texte', '« ' + d.texte + ' »'));
-  const description = descriptionDictee(d);
-  if (description) bloc.append(el('p', 'row-muted', description));
-  if (Array.isArray(d.motsCibles) && d.motsCibles.length) bloc.append(el('p', 'row-muted', 'Mots cibles : ' + d.motsCibles.join(', ')));
+  bloc.append(el('span', 'eyebrow', 'Dictée'), carteDictee(d, { avecLien: false }));
   if (d.ecarts != null && (!Array.isArray(d.ecarts) || d.ecarts.length)) {
     bloc.append(el('pre', 'json-bloc', typeof d.ecarts === 'object' ? JSON.stringify(d.ecarts, null, 2) : String(d.ecarts)));
   }

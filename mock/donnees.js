@@ -194,9 +194,18 @@ const SCENARIOS = [
       },
     ],
   },
+  // 5 — Dictée (une séance par passage, mode 'dictee' ; détail dans mock/fil.js)
+  {
+    theme: 'Dictée',
+    notion: null,
+    resume: null,
+    ecrans: [
+      { position: 1, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null, synthese: null, exercices: [] },
+    ],
+  },
 ];
 
-// [joursAvantAujourdhui, heure, childId, mode, duréeMin, scenarioIdx]
+// [joursAvantAujourdhui, heure, childId, mode, duréeMin, scenarioIdx, dictée?]
 // duréeMin null = session active (comme côté serveur).
 const SESSION_SEEDS = [
   [0,  '18:05', 'c5', 'entrainement', null, 4],
@@ -216,6 +225,25 @@ const SESSION_SEEDS = [
   [8,  '10:30', 'c2', 'entrainement', 12, 4],
   [10, '17:45', 'c7', 'devoirs',      18, 2],
   [12, '10:00', 'c5', 'entrainement', 14, 3],
+  // Dictées du nouveau flux (textes inventés) : ajoutées en fin de liste
+  // pour garder les id des séances ci-dessus.
+  [1,  '17:05', 'c1', 'dictee',        9, 5, { origine: 'entrainement', etape: 'fin', niveau: 'facile',
+    texte: 'Le petit chat gris dort sur le rebord de la fenêtre.', mots: ['gris', 'rebord', 'fenêtre'],
+    fautes: [['accord_adjectif', true], ['accent_grave', true], ['accent_grave', false]], ev: { ouverture: 1, etape: 6, verdict: 3, reglee: 2, cloture: 1 } }],
+  [1,  '19:20', 'c4', 'dictee',        7, 5, { origine: 'devoir', etape: 'non_corrigee', niveau: 'moyen',
+    texte: 'Au marché, nous avons acheté des pommes rouges & des poires <bien mûres>.', mots: ['marché', 'acheté'],
+    fautes: [], ev: { ouverture: 1, etape: 4, cloture: 1 } }],
+  [0,  '08:30', 'c3', 'dictee',     null, 5, { origine: 'entrainement', etape: 'preparation', niveau: 'moyen',
+    texte: null, mots: [], fautes: [], ev: { ouverture: 1 } }],
+  [2,  '18:40', 'c2', 'dictee',        5, 5, { origine: 'entrainement', etape: 'relecture', niveau: 'facile',
+    texte: 'Le vent souffle fort dans les grands arbres du parc.', mots: ['souffle', 'arbres'],
+    fautes: [], ev: { ouverture: 1, etape: 2 } }],
+  [3,  '17:50', 'c1', 'dictee',        3, 5, { origine: 'entrainement', etape: 'echec', niveau: 'difficile', validation: 'rejete', tentatives: 3,
+    texte: 'Les hirondelles reviennent chaque année au printemps.', mots: ['hirondelles', 'printemps'],
+    fautes: [], ev: { ouverture: 1, etape: 1, cloture: 1 } }],
+  [5,  '18:10', 'c6', 'dictee',       12, 5, { origine: 'devoir', etape: 'fin', niveau: 'moyen',
+    texte: 'Demain, la classe ira visiter le musée de la ville.', mots: ['demain', 'musée'],
+    fautes: [], ev: { ouverture: 1, etape: 7, verdict: 2, cloture: 1 } }],
 ];
 
 export const isoDaysAgo = (n) => isoJoursAvant(n);
@@ -223,7 +251,7 @@ export const isoDaysAgo = (n) => isoJoursAvant(n);
 const childById = Object.fromEntries(CHILDREN.map((c) => [c.id, c]));
 
 export const SESSIONS = SESSION_SEEDS.map((seed, i) => {
-  const [daysAgo, time, childId, mode, durationMin, scenarioIdx] = seed;
+  const [daysAgo, time, childId, mode, durationMin, scenarioIdx, dictee = null] = seed;
   const name = childById[childId].name;
   const scenario = SCENARIOS[scenarioIdx];
   const fill = (text) => (text == null ? null : text.split('{name}').join(name));
@@ -238,7 +266,8 @@ export const SESSIONS = SESSION_SEEDS.map((seed, i) => {
     date: dateStr,
     time,
     startedAt: new Date(startMs).toISOString(),
-    mode, // 'devoirs' | 'entrainement'
+    mode, // 'devoirs' | 'entrainement' | 'dictee'
+    dictee, // mode 'dictee' : la dictée du passage (mock/fil.js dicteeBrute)
     status: durationMin == null ? 'active' : 'archivee',
     durationMin, // null = session active
     theme: scenario.theme,

@@ -35,7 +35,8 @@ Deno.test('adaptateur journee : jour vide', () => {
 Deno.test('adaptateur apercu : exemple du contrat', () => {
   const a = adapterApercu(structuredClone(APERCU));
   assertEquals([a.enfantsActifs, a.famillesActives, a.minutes, a.ouvertures], [2, 2, 19, 2]);
-  assertEquals(a.seances, { total: 2, parMode: { devoirs: 1, entrainement: 1 } });
+  assertEquals(a.seances, { total: 2, parMode: { devoirs: 1, entrainement: 1, dictee: 0 } });
+  assertEquals(a.dictees, { lancees: 0, finies: 0, nonCorrigees: 0, echecsGeneration: 0, tauxEchecGeneration: null });
   assertEquals(a.entreesParMode, { apprentissage: 0, devoirs: 1, dictee: 1, autre: 0 });
   assertEquals(a.retention.j7, { eligibles: 1, revenus: 1, taux: 1 });
   assertEquals(a.serie[1], { jour: '2026-07-11', seances: 1, enfantsActifs: 1, minutes: 0, ouvertures: 1 });

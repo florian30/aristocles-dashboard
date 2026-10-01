@@ -161,22 +161,55 @@ export function devoirBrut(s) {
   };
 }
 
-// Une dictée d'entraînement hier, sur la première séance du jour.
+// Dictée d'une séance (§ 2.5, forme DICT-12), sinon null : la dictée
+// du passage pour une séance en mode 'dictee' (nouveau flux, textes
+// inventés), plus une dictée de l'ancien flux (classe null) hier, sur la
+// première séance du jour.
 export function dicteeBrute(s) {
+  if (s.dictee) return dicteeNouveauFlux(s, s.dictee);
   const hier = hierParis();
-  const premiere = SESSIONS.find((x) => jourParis(x.startedAt) === hier);
+  const premiere = SESSIONS.find((x) => jourParis(x.startedAt) === hier && !x.dictee);
   if (!premiere || premiere.id !== s.id) return null;
   return {
     id: 'dic-' + s.id,
     ecran_id: ecranId(s, s.ecrans.length),
     origine: 'entrainement',
     texte_reference: 'Les enfants ont ramassé des feuilles mortes dans le jardin.',
+    classe: null,
+    etape: 'preparation',
+    finie_at: null,
     mots_cibles: ['ramassé', 'feuilles', 'mortes'],
     niveau_difficulte: 'moyen',
     validation_status: 'valide',
     validation_tentatives: 2,
     ecarts_detectes: [{ attendu: 'ramassé', lu: 'ramasser' }],
     created_at: instant(s, 15 * 60),
+    nb_fautes_comptees: 0,
+    regles_revues: [],
+    evenements_par_type: {},
+    session_id: s.id,
+  };
+}
+
+function dicteeNouveauFlux(s, d) {
+  const fin = d.etape === 'fin' && s.durationMin != null ? instant(s, s.durationMin * 60) : null;
+  return {
+    id: 'dic-' + s.id,
+    ecran_id: ecranId(s, 1),
+    origine: d.origine,
+    texte_reference: d.texte,
+    classe: enfantParId[s.childId].classe,
+    etape: d.etape,
+    finie_at: fin,
+    mots_cibles: [...d.mots],
+    niveau_difficulte: d.niveau,
+    validation_status: d.validation || 'valide',
+    validation_tentatives: d.tentatives || 1,
+    ecarts_detectes: null,
+    created_at: instant(s, 20),
+    nb_fautes_comptees: d.fautes.filter(([, comptee]) => comptee).length,
+    regles_revues: [...new Set(d.fautes.map(([code]) => code))].sort(),
+    evenements_par_type: { ...d.ev },
     session_id: s.id,
   };
 }
