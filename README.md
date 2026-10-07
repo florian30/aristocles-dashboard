@@ -17,7 +17,7 @@ python3 -m http.server 8000
 deno test tests/
 ```
 
-Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », cache et transport de l'API, parcours en données factices.
+Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », adaptateur et filtres de la page Incidents (exemple du contrat recopié dans `tests/contrat_veille_exemples.js`), cache et transport de l'API, parcours en données factices.
 
 ## Environnements et routes
 
@@ -32,6 +32,7 @@ L'environnement fait partie de l'URL (prod par défaut) :
 | `#/{env}/seances`, `#/{env}/seances/{session_id}` | Liste des séances (`session`), relecture tour par tour (`session_detail`) |
 | `#/{env}/seances/{session_id}/tour/{llm_generation_id}` | Trace IA d'une réplique d'Ari (action `tour`) : génération, prompt système, requête et réponse brutes |
 | `#/{env}/sante` | Santé & coûts (action `sante`) |
+| `#/{env}/incidents?jours=7\|14\|30\|92` | Incidents (action `veille`) : les huit familles de la veille de la prod (vert / orange / rouge), la frise jour par jour (aujourd'hui partiel) et le détail des lignes d'une famille ou d'un jour (`&famille=F1…F8`, `&jour=AAAA-MM-JJ`) ; 14 jours par défaut |
 
 `{env}` vaut `prod` ou `dev`. En dev, un bandeau orange « BAC À SABLE — dev » reste affiché en permanence. Une date inexistante dans l'URL de La veille (ex. `2026-02-30`) ramène à hier. Les filtres sont dans le hash, donc un rafraîchissement les garde : `?periode=hier|7j|30j|tout`, `from`, `to`, `child` pour les Séances ; `?periode=7j|30j|92j` ou `from`/`to` pour la Vue d'ensemble, Santé & coûts et la fiche enfant (jours civils de Paris, plage ramenée à 92 jours avec un message si elle dépasse).
 
@@ -61,6 +62,7 @@ router.js       analyse et fabrication des hash
 ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de Paris,
                 période, graphe SVG, blocs techniques partagés, téléchargement de photo
 ui/dictee.js    rubrique Dictée (libellés purs + carte)
+ui/incidents.js page Incidents (sélection, filtres, libellés produit des codes)
 vues/           une vue par fichier (enfant.js : fiche, tour.js : trace IA)
 mock/           données factices par action (formes brutes de l'Edge) ;
                 fil.js : mot à mot, photos, devoirs, dictées, traces IA

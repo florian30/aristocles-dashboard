@@ -14,9 +14,10 @@ import { sante } from './sante.js';
 import { session } from './session.js';
 import { session_detail } from './session_detail.js';
 import { tour } from './tour.js';
+import { veille } from './veille.js';
 
 // `stats` n'existe plus côté front : une action inconnue répond 400.
-const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo };
+const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo, veille };
 
 function attendre(ms, signal) {
   return new Promise((resoudre, rejeter) => {
