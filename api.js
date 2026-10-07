@@ -23,6 +23,8 @@
    journee(env, date) → voir adapterJournee (La veille)
    apercu(env, from, to) → voir adapterApercu (Vue d'ensemble)
    sante(env, from, to) → voir adapterSante (Santé & coûts)
+   veille(env, jours) → voir adapterVeille (Incidents : familles F1-F8,
+     série par jour, lignes de la vue ; `jours` entier 1..92)
    Pour ces actions, les jours sont des jours civils de Paris
    ('AAAA-MM-JJ') ; from/to sont convertis en bornes ISO (≤ 92 j).
    ============================================================ */
@@ -618,6 +620,62 @@ export function etatErreurPhoto(e) {
   return { code: 'erreur', message: 'Téléchargement impossible, réessayez.' };
 }
 
+// ---------- Veille de la prod (page Incidents, veille-prod.md § 7) ----------
+
+const FAMILLES_VEILLE = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'];
+const NIVEAUX_VEILLE = ['vert', 'orange', 'rouge'];
+const niveauVeille = (n) => (NIVEAUX_VEILLE.includes(n) ? n : 'vert');
+
+// `familles` est rendu F1 → F8 par l'Edge ; l'ordre est garanti ici aussi.
+// Un coût null reste null (inconnu), jamais 0.
+export function adapterVeille(data) {
+  const rang = (f) => (FAMILLES_VEILLE.includes(f) ? FAMILLES_VEILLE.indexOf(f) : FAMILLES_VEILLE.length);
+  return {
+    genereLe: data.genere_le || null,
+    aujourdhui: data.aujourdhui || null,
+    jours: data.jours ?? null,
+    premierJour: data.premier_jour || null,
+    niveau: niveauVeille(data.niveau),
+    familles: tableau(data.familles).map((f) => ({
+      famille: f.famille,
+      libelle: f.libelle || f.famille,
+      niveau: niveauVeille(f.niveau),
+      nb: f.nb || 0,
+      joursRouges: f.jours_rouges || 0,
+      joursOrange: f.jours_orange || 0,
+      dernierJourSignale: f.dernier_jour_signale || null,
+      seuil: { orange: f.seuil?.orange ?? null, rouge: f.seuil?.rouge ?? null },
+    })).sort((a, b) => rang(a.famille) - rang(b.famille)),
+    serie: tableau(data.serie).map((p) => ({
+      jour: p.jour,
+      partiel: p.partiel === true,
+      niveau: niveauVeille(p.niveau),
+      appelsLlm: p.appels_llm || 0,
+      eur: nombreOuNull(p.cout_eur),
+      familles: Object.fromEntries(Object.entries(p.familles || {}).map(([cle, f]) => [cle, {
+        niveau: niveauVeille(f?.niveau),
+        nb: f?.nb || 0,
+        motifs: tableau(f?.motifs),
+      }])),
+    })),
+    lignes: tableau(data.lignes).map((l) => ({
+      jour: l.jour,
+      famille: l.famille,
+      fonction: l.fonction || null,
+      role: l.role || null,
+      modele: l.modele || null,
+      code: l.code,
+      nb: l.nb || 0,
+      nbTotal: nombreOuNull(l.nb_total),
+      p50: nombreOuNull(l.latence_p50_ms),
+      p95: nombreOuNull(l.latence_p95_ms),
+      eur: nombreOuNull(l.cout_eur),
+      premierAt: l.premier_at || null,
+      dernierAt: l.dernier_at || null,
+    })),
+  };
+}
+
 // ---------- Client ----------
 
 export function creerApi({ transport, cache = creerCache() }) {
@@ -659,6 +717,9 @@ export function creerApi({ transport, cache = creerCache() }) {
     },
     async sante(env, from, to, options) {
       return adapterSante(await appeler(env, 'sante', bornesParis(from, to), options));
+    },
+    async veille(env, jours, options) {
+      return adapterVeille(await appeler(env, 'veille', { jours }, options));
     },
     async enfants(env, from, to, options) {
       return adapterEnfants(await appeler(env, 'enfants', plageOptionnelle(from, to), options));
