@@ -10,7 +10,7 @@ import { barrePeriode } from '../ui/filtres.js';
 import { carteCout, nomRole, celluleCout } from '../ui/blocs.js';
 import { partDictee } from '../ui/dictee.js';
 import { carteKpi, el, tableau } from '../ui/dom.js';
-import { fmtDuree, fmtEntier } from '../ui/format.js';
+import { fmtDuree, fmtEntier, pluriel } from '../ui/format.js';
 import { grapheBarres } from '../ui/graphe.js';
 import { LIBELLE_ENTREE, LIBELLE_MODE } from '../ui/libelles.js';
 import { fmtJourCourt } from '../ui/paris.js';
@@ -31,7 +31,8 @@ export async function rendre({ route, api, signal }) {
   const kpis = el('div', 'kpi-grid kpi-grid-jour');
   kpis.append(
     carteKpi('Enfants actifs', String(a.enfantsActifs), a.famillesActives + (a.famillesActives > 1 ? ' familles actives' : ' famille active')),
-    carteKpi('Séances', fmtEntier(a.seances.total)),
+    // Séances sans échange : écartées par l'Edge, seulement mentionnées.
+    carteKpi('Séances', fmtEntier(a.seances.total), a.sansEchange ? 'hors ' + pluriel(a.sansEchange, 'séance sans échange', 'séances sans échange') : undefined),
     carteKpi('Temps en séance', a.minutes ? fmtDuree(a.minutes) : '0 min', 'séances terminées'),
     carteKpi('Exercices', fmtEntier(a.exercices.succes) + ' / ' + fmtEntier(a.exercices.total),
       'réussis / total' + (a.exercices.fragile ? ' · ' + a.exercices.fragile + ' fragiles' : '')),

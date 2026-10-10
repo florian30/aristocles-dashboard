@@ -2,7 +2,8 @@
    La veille — page d'accueil (action `journee`).
    Ce qui s'est passé un jour civil de Paris : résumé en tuiles,
    une carte par enfant actif (séances, devoirs, dictées, écrans
-   consultés, erreurs), puis la technique du jour.
+   consultés, erreurs), puis la technique du jour. Les séances sans
+   échange sont masquées sauf `sans_echange=1` (lignes grisées).
    ============================================================ */
 
 import { construireHash, naviguer } from '../router.js';
@@ -12,14 +13,17 @@ import { carteKpi, el, lien, tableau } from '../ui/dom.js';
 import { fmtDureeSec, fmtEntier, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE, libelleCloture } from '../ui/libelles.js';
 import { fmtJourCourt, fmtJourTitre, navigationJour } from '../ui/paris.js';
+import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 
 export const titre = 'La veille';
 
 export async function rendre({ route, api, signal }) {
-  const jour = await api.journee(route.env, route.date, { signal });
+  const jour = await api.journee(route.env, route.date, { signal, avecSansEchange: avecSansEchange(route) });
 
   const vue = el('div', 'vue vue-veille');
   vue.append(entete(route));
+  const bandeau = bandeauSansEchange(route, jour.sansEchange);
+  if (bandeau) vue.append(bandeau);
 
   if (jour.estVide) {
     const vide = el('section', 'etat etat-vide');
@@ -165,9 +169,11 @@ function tableSeances(seances, env) {
       const mode = el('span', 'row-mode');
       mode.append(el('span', 'mode-dot is-' + s.mode), document.createTextNode(LIBELLE_MODE[s.mode] || s.mode));
       seance.append(mode, el('span', 'cell-note', s.theme || 'Sans thème'));
+      if (s.sansEchange) seance.append(puceSansEchange());
       const cloture = libelleCloture(s.status, s.cloture);
       return {
         href: construireHash({ env, vue: 'seances', sessionId: s.id }),
+        classe: s.sansEchange ? 'is-sans-echange' : '',
         cellules: [
           el('span', 'row-date', s.heure + (s.heureFin ? '–' + s.heureFin : '')),
           seance,

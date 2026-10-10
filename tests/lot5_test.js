@@ -261,7 +261,7 @@ Deno.test('mock : Familles → fiche → séance tour par tour → trace IA → 
 
 Deno.test('mock : trace purgée sur une séance d’au moins 7 jours, dictée d’hier relue', async () => {
   const api = apiMock();
-  const liste = await api.sessions('prod', null, null, 'all');
+  const { seances: liste } = await api.sessions('prod', null, null, 'all');
   let purgee = null;
   for (const s of liste) {
     const d = await api.detail('prod', s.id);

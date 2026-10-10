@@ -9,7 +9,7 @@ import { aujourdhuiParis, debutJourParisMs, decalerJour, jourParis } from '../ui
 import { ACQUISITIONS, CHILDREN, SESSIONS } from './donnees.js';
 import { devoirBrut, dicteeBrute, photosSeance } from './fil.js';
 import { resumeSeance } from './journee.js';
-import { dansPlage } from './outils.js';
+import { dansPlage, ecarteSansEchange } from './outils.js';
 
 // childId → [genre, créé il y a N jours, parent_id, e-mail parent]
 const FAMILLES = {
@@ -41,10 +41,12 @@ function identite(c) {
   };
 }
 
-const seancesDe = (childId, params) => SESSIONS
+const toutesSeancesDe = (childId, params) => SESSIONS
   .map((s, i) => ({ s, i }))
   .filter(({ s }) => s.childId === childId && dansPlage(s, params))
   .sort((a, b) => b.s.startedAt.localeCompare(a.s.startedAt));
+const seancesDe = (childId, params) => ecarteSansEchange(toutesSeancesDe(childId, params), params, (x) => x.s).seances;
+const nbSansEchange = (childId, params) => ecarteSansEchange(toutesSeancesDe(childId, params), params, (x) => x.s).nb;
 
 const nbAcquises = (childId) => (ACQUISITIONS[childId] || []).filter((a) => ACQUISES.includes(a.maitrise)).length;
 
@@ -52,6 +54,7 @@ export function enfants(params = {}) {
   return {
     from: params.from || null,
     to: params.to || null,
+    seances_sans_echange: CHILDREN.reduce((a, c) => a + nbSansEchange(c.id, params), 0),
     enfants: CHILDREN.map((c) => {
       const miennes = seancesDe(c.id, params);
       return {
@@ -159,6 +162,7 @@ export function enfant(params = {}) {
     from: params.from || null,
     to: params.to || null,
     identite: identite(c),
+    seances_sans_echange: nbSansEchange(c.id, params),
     seances: miennes.map(({ s, i }) => resumeSeance(s, i)),
     maitrise,
     notions_acquises: nbAcquises(c.id),

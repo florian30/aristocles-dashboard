@@ -8,11 +8,12 @@ import { construireHash } from '../router.js';
 import { el, tableau } from '../ui/dom.js';
 import { fmtEntier, pluriel } from '../ui/format.js';
 import { fmtInstantParis, fmtJourCourt, jourParis } from '../ui/paris.js';
+import { mentionSansEchange } from '../ui/sans-echange.js';
 
 export const titre = 'Familles';
 
 export async function rendre({ route, api, signal }) {
-  const { enfants } = await api.enfants(route.env, null, null, { signal });
+  const { enfants, sansEchange } = await api.enfants(route.env, null, null, { signal });
 
   const vue = el('div', 'vue vue-familles');
   const tete = el('div', 'page-head');
@@ -20,6 +21,8 @@ export async function rendre({ route, api, signal }) {
   tete.append(el('h1', 'page-title', titre),
     el('span', 'page-count', pluriel(enfants.length, 'enfant') + ' · ' + actifs + (actifs > 1 ? ' actifs' : ' actif') + ' sur les 92 derniers jours'));
   vue.append(tete);
+  const mention = mentionSansEchange(sansEchange);
+  if (mention) vue.append(mention);
 
   vue.append(tableau({
     classe: 'familles-table',

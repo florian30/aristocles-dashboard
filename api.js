@@ -11,10 +11,18 @@
    Edge en formes de vue et sont testés sous Deno.
 
    Formes de retour :
-   sessions(env, from, to, childId) → [{ id, date, time, childId, childName,
-     mode, status, theme, durationMin, exerciseCount }] (récentes d'abord)
-   detail(env, sessionId) → { …, resume, homework, ecrans[] (avec
-     interactions[] et dictee), acquisitions[], evenements[] } ou null
+   sessions(env, from, to, childId) → { seances: [{ id, date, time, childId,
+     childName, mode, status, theme, durationMin, exerciseCount }] (récentes
+     d'abord), sansEchange }
+   Séances sans échange (lot SÉANCES) : session, journee, apercu, enfants
+     et enfant les écartent sauf options.avecSansEchange (→ param
+     `avec_sans_echange: true`) ; `sansEchange` est leur nombre dans la
+     plage, null si l'Edge de l'environnement ne le renvoie pas encore.
+   detail(env, sessionId) → { …, resume, homework, consignes[], ecrans[]
+     (avec interactions[], dictee, premiereActiviteAt ; dans l'ordre reçu,
+     l'Edge les trie par 1re activité), acquisitions[], evenements[] } ou null
+   photosSeance(env, sessionId) → voir adapterPhotosSeance, JAMAIS mis en
+     cache (URLs signées d'1 h) ; null pour une séance inconnue
    enfants(env, from?, to?) → voir adapterEnfants (Familles)
    enfant(env, childId, from?, to?) → voir adapterEnfant ou null
    tour(env, generationId) → voir adapterTour ou null
@@ -132,7 +140,14 @@ export function paramsPlage(from, to) {
   return params;
 }
 
+// Nombre de séances sans échange écartées ; null = Edge pas encore à jour.
+const nbSansEchange = (data) => (typeof data.seances_sans_echange === 'number' ? data.seances_sans_echange : null);
+
 export function adapterSessions(data) {
+  return { seances: adapterListeSessions(data), sansEchange: nbSansEchange(data) };
+}
+
+function adapterListeSessions(data) {
   return (data.sessions || []).map((s) => ({
     id: s.id,
     date: dateLocale(s.started_at),
@@ -183,6 +198,7 @@ export function adapterDetail(data) {
     interactions: tableau(e.interactions).map(adapterInteraction)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     dictee: e.dictee ? adapterDictee(e.dictee) : null,
+    premiereActiviteAt: e.premiere_activite_at || null,
   }));
   return {
     id: s.id,
@@ -201,6 +217,7 @@ export function adapterDetail(data) {
     exerciseCount: ecrans.reduce((acc, e) => acc + e.exercices.length, 0),
     resume: data.resume_seance || null,
     homework: data.homework ? adapterDevoir(data.homework) : null,
+    consignes: adapterConsignes(ecrans),
     ecrans,
     acquisitions: (data.acquisitions || []).map((a) => ({
       notion: a.notion || null,
@@ -217,6 +234,35 @@ export function adapterDetail(data) {
       detail: e.detail ?? null,
     })),
   };
+}
+
+// Consignes de devoirs (DASH-4), par position d'écran : celles qu'a vues
+// l'enfant. `exercice_presente` porte le texte (corrigé le cas échéant),
+// l'original lu sur la photo dans metadata.enonce_origine. `origine` n'est
+// rempli que s'il diffère du texte (seule la matière a pu être corrigée).
+export function adapterConsignes(ecrans) {
+  return ecrans
+    .filter((e) => e.type === 'exercice')
+    .map((e) => {
+      const presente = e.interactions.find((i) => i.type === 'exercice_presente');
+      const m = presente?.metadata || {};
+      const retiree = e.statutFermeture === 'retire_par_enfant';
+      if (!presente && !retiree) return null;
+      const texte = presente?.texte ?? e.exercices[0]?.enonce ?? null;
+      const origine = typeof m.enonce_origine === 'string' && m.enonce_origine !== texte ? m.enonce_origine : null;
+      return {
+        ecranId: e.id,
+        position: e.position,
+        texte,
+        origine,
+        matiere: typeof m.matiere === 'string' ? m.matiere : null,
+        corrigee: m.corrige_par_enfant === true,
+        ajoutee: m.ajoute_par_enfant === true,
+        retiree,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.position - b.position);
 }
 
 // ---------- Adaptateurs contrat v2 (journee, apercu, sante) ----------
@@ -365,6 +411,7 @@ export function adapterResumeSeance(s) {
     exercices: { nb: x.nb || 0, succes: x.succes || 0, fragile: x.fragile || 0, autres: x.autres || 0 },
     pouces: { haut: s.pouces?.haut || 0, bas: s.pouces?.bas || 0 },
     cloture: s.cloture ? { soldeeAt: s.cloture.soldee_at || null, motif: s.cloture.motif || null } : null,
+    sansEchange: s.sans_echange === true,
   };
 }
 
@@ -397,6 +444,7 @@ export function adapterJournee(data) {
   const secondes = seances.reduce((acc, s) => acc + (s.status === 'archivee' ? s.dureeSec || 0 : 0), 0);
   return {
     date: data.date,
+    sansEchange: nbSansEchange(data),
     enfants,
     technique,
     resume: {
@@ -427,6 +475,7 @@ export function adapterApercu(data) {
   return {
     enfantsActifs: data.enfants_actifs || 0,
     famillesActives: data.familles_actives || 0,
+    sansEchange: nbSansEchange(data),
     seances: {
       total: data.seances?.total || 0,
       parMode: { devoirs: 0, entrainement: 0, ...(data.seances?.par_mode || {}) },
@@ -497,6 +546,7 @@ export function adapterEnfants(data) {
   return {
     from: data.from || null,
     to: data.to || null,
+    sansEchange: nbSansEchange(data),
     enfants: trierParActivite(tableau(data.enfants).map((c) => ({
       ...adapterIdentite(c),
       derniereActivite: c.derniere_activite || null,
@@ -514,6 +564,7 @@ export function adapterEnfant(data) {
     from: data.from || null,
     to: data.to || null,
     identite: adapterIdentite(data.identite || {}),
+    sansEchange: nbSansEchange(data),
     seances: tableau(data.seances).map(adapterResumeSeance),
     maitrise: tableau(data.maitrise).map((x) => ({
       conceptId: x.concept_id || null,
@@ -618,6 +669,28 @@ export function adapterTour(data) {
 // § 2.10 — URL signée de téléchargement (5 min).
 export function adapterPhoto(data) {
   return { url: data.url, expireLe: data.expire_le || null, nomFichier: data.nom_fichier || null };
+}
+
+// DASH-3 — photos d'une séance signées en lot (URLs d'1 h, sans
+// `download`), dans l'ordre de prise de vue ; une version redressée suit
+// son originale. Une photo purgée a `url` null.
+export function adapterPhotosSeance(data) {
+  return {
+    sessionId: data.session_id || null,
+    validiteS: nombreOuNull(data.validite_s),
+    expireLe: data.expire_le || null,
+    photos: tableau(data.photos).map((p) => ({
+      rang: p.rang ?? null,
+      source: p.source === 'dictee' ? 'dictee' : 'devoirs',
+      ecranId: p.ecran_id || null,
+      interactionId: p.interaction_id || null,
+      dicteeId: p.dictee_id || null,
+      redressee: p.redressee === true,
+      priseLe: p.prise_le || null,
+      purgee: p.etat === 'purgee' || !p.url,
+      url: p.etat === 'purgee' ? null : p.url || null,
+    })),
+  };
 }
 
 // Erreur de l'action `photo` → état affichable. Une photo purgée
@@ -754,11 +827,18 @@ export function creerApi({ transport, cache = creerCache() }) {
   // Plage optionnelle (jours civils de Paris) : les deux bornes ou aucune.
   const plageOptionnelle = (from, to) => (from && to ? bornesParis(from, to) : {});
 
+  // options.avecSansEchange → param `avec_sans_echange: true` (posé
+  // seulement s'il est vrai : la clé de cache reste celle d'avant sinon).
+  const sansEchange = (params, options = {}) => {
+    const { avecSansEchange, ...reste } = options;
+    return [avecSansEchange === true ? { ...params, avec_sans_echange: true } : params, reste];
+  };
+
   return {
     async sessions(env, from, to, childId, options) {
       const params = paramsPlage(from, to);
       if (childId && childId !== 'all') params.child_id = childId;
-      return adapterSessions(await appeler(env, 'session', params, options));
+      return adapterSessions(await appeler(env, 'session', ...sansEchange(params, options)));
     },
     async detail(env, sessionId, options) {
       try {
@@ -769,10 +849,10 @@ export function creerApi({ transport, cache = creerCache() }) {
       }
     },
     async journee(env, date, options) {
-      return adapterJournee(await appeler(env, 'journee', { date }, options));
+      return adapterJournee(await appeler(env, 'journee', ...sansEchange({ date }, options)));
     },
     async apercu(env, from, to, options) {
-      return adapterApercu(await appeler(env, 'apercu', bornesParis(from, to), options));
+      return adapterApercu(await appeler(env, 'apercu', ...sansEchange(bornesParis(from, to), options)));
     },
     async sante(env, from, to, options) {
       return adapterSante(await appeler(env, 'sante', bornesParis(from, to), options));
@@ -781,11 +861,11 @@ export function creerApi({ transport, cache = creerCache() }) {
       return adapterVeille(await appeler(env, 'veille', { jours }, options));
     },
     async enfants(env, from, to, options) {
-      return adapterEnfants(await appeler(env, 'enfants', plageOptionnelle(from, to), options));
+      return adapterEnfants(await appeler(env, 'enfants', ...sansEchange(plageOptionnelle(from, to), options)));
     },
     async enfant(env, childId, from, to, options) {
       try {
-        return adapterEnfant(await appeler(env, 'enfant', { child_id: childId, ...plageOptionnelle(from, to) }, options));
+        return adapterEnfant(await appeler(env, 'enfant', ...sansEchange({ child_id: childId, ...plageOptionnelle(from, to) }, options)));
       } catch (e) {
         if (e.status === 404) return null;
         throw e;
@@ -802,6 +882,16 @@ export function creerApi({ transport, cache = creerCache() }) {
     // Hors cache : l'URL signée expire en 5 minutes, on la redemande à chaque clic.
     async photo(env, interactionId, options = {}) {
       return adapterPhoto(await transport(env, 'photo', { interaction_id: interactionId }, options));
+    },
+    // Hors cache : les URLs signées expirent en 1 h ; une miniature qui ne
+    // charge plus fait redemander le lot.
+    async photosSeance(env, sessionId, options = {}) {
+      try {
+        return adapterPhotosSeance(await transport(env, 'photos_seance', { session_id: sessionId }, options));
+      } catch (e) {
+        if (e.status === 404) return null;
+        throw e;
+      }
     },
     console: creerConsole(transport),
     viderCache(env) {

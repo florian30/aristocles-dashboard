@@ -1,9 +1,11 @@
 /* ============================================================
-   Relecture de séance (action `session_detail`) : bilan, devoir,
-   puis par écran le fil tour par tour (enfant / Ari / système),
-   avec lien vers la trace IA de chaque réplique d'Ari et
-   téléchargement des photos ; dictée de l'écran, chronologie
-   technique repliée, acquisitions.
+   Relecture de séance (action `session_detail`) : bilan, devoir et
+   consignes vues par l'enfant, puis par écran (dans l'ordre de leur
+   1re activité, tel que reçu) le fil tour par tour (enfant / Ari /
+   système), avec lien vers la trace IA de chaque réplique d'Ari et
+   miniatures des photos (`photos_seance`, chargé après le rendu ;
+   à défaut, bouton de téléchargement) ; dictée de l'écran,
+   chronologie technique repliée, acquisitions.
    Le mot à mot et les sorties IA sont du contenu non fiable :
    toujours en textContent.
    ============================================================ */
@@ -12,6 +14,7 @@ import { construireHash } from '../router.js';
 import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
 import { carteDictee } from '../ui/dictee.js';
 import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
+import { estAnnulation } from '../api.js';
 import { fmtDuree, fmtDureeSec, fmtHorodatagePrecis, fmtJour, fmtJourHeure, pluriel } from '../ui/format.js';
 import {
   LIBELLE_FERMETURE,
@@ -25,7 +28,7 @@ import {
   LIBELLE_VU_EN_CLASSE,
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
-import { boutonPhoto } from '../ui/photo.js';
+import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
 
 export const titre = 'Séance';
 
@@ -64,11 +67,17 @@ export async function rendre({ route, api, signal }) {
     el('p', 'resume-text' + (seance.resume ? '' : ' is-empty'), seance.resume || '—'));
   corps.append(bilan);
   if (seance.homework) corps.append(carteDevoir(seance.homework));
+  if (seance.mode === 'devoirs' && seance.consignes.length) corps.append(carteConsignes(seance.consignes));
+
+  // Photos : emplacements remplis quand `photos_seance` répond.
+  const photos = { parInteraction: new Map(), parEcran: new Map(), tete: el('div', 'photos-seance') };
+  corps.append(photos.tete);
 
   corps.append(el('h2', 'section-title', 'Fil de la séance'));
   if (seance.ecrans.length === 0) corps.append(el('p', 'reader-empty', 'Aucun écran pour cette séance.'));
-  const contexte = { route, api, prenom: seance.childName };
+  const contexte = { route, api, prenom: seance.childName, photos };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
+  chargerPhotos(seance, contexte, signal);
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
   if (seance.evenements.length > 0) corps.append(carteChronologie(seance.evenements));
@@ -89,11 +98,38 @@ function carteDevoir(d) {
   return carte;
 }
 
+// DASH-4 — les consignes telles que l'enfant les a vues.
+function carteConsignes(consignes) {
+  const carte = el('section', 'consignes-card');
+  carte.append(el('span', 'eyebrow', 'Consignes'));
+  const liste = el('ol', 'consignes');
+  for (const c of consignes) {
+    const item = el('li', 'consigne' + (c.retiree ? ' is-retiree' : ''));
+    const texte = el('p', 'consigne-texte');
+    if (c.origine) {
+      texte.append(el('del', 'consigne-origine', c.origine), el('span', 'consigne-fleche', ' → '), el('ins', 'consigne-corrigee', c.texte || '—'));
+    } else {
+      texte.append(el(c.retiree ? 's' : 'span', null, c.texte || '(consigne sans texte)'));
+    }
+    const drapeaux = el('div', 'consigne-flags');
+    drapeaux.append(el('span', 'cell-note', 'Écran ' + c.position + (c.matiere ? ' · ' + c.matiere : '')));
+    if (c.retiree) drapeaux.append(el('span', 'chip is-failure', 'Retirée par l’enfant'));
+    if (c.corrigee) drapeaux.append(el('span', 'chip is-info', c.origine ? 'Corrigée par l’enfant' : 'Matière corrigée par l’enfant'));
+    if (c.ajoutee) drapeaux.append(el('span', 'chip is-info', 'Ajoutée par l’enfant'));
+    item.append(texte, drapeaux);
+    liste.append(item);
+  }
+  carte.append(liste);
+  return carte;
+}
+
 function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
   const tete = el('div', 'ecran-head');
-  tete.append(el('span', 'ecran-title',
-    'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type)));
+  const titreEcran = el('span', 'ecran-title',
+    'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type));
+  if (ecran.premiereActiviteAt) titreEcran.append(el('span', 'ecran-activite', ' · 1re activité ' + heureParis(ecran.premiereActiviteAt)));
+  tete.append(titreEcran);
   const drapeaux = el('div', 'ecran-flags');
   const fermeture = LIBELLE_FERMETURE[ecran.statutFermeture];
   drapeaux.append(
@@ -107,6 +143,9 @@ function carteEcran(ecran, contexte) {
   contenu.append(el('p', 'ecran-synthese' + (ecran.synthese ? '' : ' is-empty'), ecran.synthese || '—'));
   for (const x of ecran.exercices) contenu.append(carteExercice(x));
   if (ecran.dictee) contenu.append(blocDictee(ecran.dictee));
+  const photosEcran = el('div', 'photos-ecran');
+  contexte.photos.parEcran.set(ecran.id, photosEcran);
+  contenu.append(photosEcran);
   contenu.append(filEcran(ecran, contexte));
   carte.append(tete, contenu);
   return carte;
@@ -114,7 +153,7 @@ function carteEcran(ecran, contexte) {
 
 // ---------- Fil tour par tour ----------
 
-function filEcran(ecran, { route, api, prenom }) {
+function filEcran(ecran, { route, prenom, photos }) {
   const bloc = el('div', 'fil-ecran');
   bloc.append(el('span', 'eyebrow', 'Mot à mot'));
   if (!ecran.interactions.length) {
@@ -123,14 +162,14 @@ function filEcran(ecran, { route, api, prenom }) {
   }
   const fil = el('ol', 'bulles');
   for (const i of ecran.interactions) {
-    if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, api, prenom }));
+    if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, prenom, photos }));
     else fil.append(ligneSysteme(i));
   }
   bloc.append(fil);
   return bloc;
 }
 
-function bulle(i, { route, api, prenom }) {
+function bulle(i, { route, prenom, photos }) {
   const ari = i.locuteur === 'ari';
   const item = el('li', 'bulle ' + (ari ? 'is-ari' : 'is-enfant'));
   const qui = el('span', 'bulle-qui', ari ? 'Ari' : prenom);
@@ -142,7 +181,11 @@ function bulle(i, { route, api, prenom }) {
   else if (!i.aPhoto) item.append(el('p', 'bulle-texte is-empty', '(sans texte)'));
 
   const actions = el('div', 'bulle-actions');
-  if (i.aPhoto) actions.append(boutonPhoto({ api, env: route.env, interactionId: i.id }));
+  if (i.aPhoto) {
+    const emplacement = el('span', 'photo-emplacement', 'Photo…');
+    photos.parInteraction.set(i.id, emplacement);
+    actions.append(emplacement);
+  }
   if (ari && i.generationId) {
     actions.append(lien(construireHash({ env: route.env, vue: 'seances', sessionId: route.sessionId, generationId: i.generationId, query: route.query }), 'lien-trace', 'Voir la trace IA'));
   }
@@ -164,9 +207,52 @@ function ligneSysteme(i) {
   }
   item.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''), el('span', null, texte));
   if (i.texte) item.append(el('span', 'fil-systeme-texte', i.texte));
-  const meta = detailEnTexte(i.metadata);
+  const meta = detailEnTexte(i.type === 'exercice_presente' ? sansChampsConsigne(i.metadata) : i.metadata);
   if (meta) item.append(el('span', 'fil-systeme-meta mono', meta));
   return item;
+}
+
+// Champs déjà rendus par le bloc Consignes : pas de JSON brut en double.
+function sansChampsConsigne(m) {
+  if (!m || typeof m !== 'object') return m;
+  const { enonce_origine: _o, corrige_par_enfant: _c, ajoute_par_enfant: _a, matiere: _m, ...reste } = m;
+  return Object.keys(reste).length ? reste : null;
+}
+
+// Miniatures : dans la bulle de la capture (interaction_id), sinon au
+// niveau de l'écran (dictée), sinon en tête du fil. Si l'action manque
+// (Edge pas à jour) ou échoue, retour au bouton de téléchargement.
+async function chargerPhotos(seance, { route, api, photos }, signal) {
+  if (!photos.parInteraction.size && !seance.ecrans.some((e) => e.dictee)) return;
+  let lot = null;
+  try {
+    const r = await api.photosSeance(route.env, seance.id, { signal });
+    if (r) lot = creerLotPhotos({ api, env: route.env, sessionId: seance.id, photos: r.photos });
+  } catch (e) {
+    if (estAnnulation(e)) return;
+  }
+  if (signal && signal.aborted) return;
+  const servies = new Set();
+  if (lot) {
+    const groupes = new Map();
+    for (const p of lot.photos) {
+      const cible = (p.interactionId && photos.parInteraction.get(p.interactionId)) ||
+        photos.parEcran.get(p.ecranId) || photos.tete;
+      if (!groupes.has(cible)) groupes.set(cible, []);
+      groupes.get(cible).push(p);
+      if (p.interactionId) servies.add(p.interactionId);
+    }
+    for (const [cible, liste] of groupes) {
+      if (cible === photos.tete) cible.append(el('span', 'eyebrow', 'Photos de la séance'));
+      if (cible.classList.contains('photo-emplacement')) cible.textContent = '';
+      cible.append(galeriePhotos(liste, lot));
+    }
+  }
+  for (const [id, emplacement] of photos.parInteraction) {
+    if (servies.has(id)) continue;
+    emplacement.textContent = '';
+    emplacement.append(boutonPhoto({ api, env: route.env, interactionId: id }));
+  }
 }
 
 function blocDictee(d) {

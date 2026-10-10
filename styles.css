@@ -722,6 +722,46 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .devoir-card p { margin: 0; }
 .dictee-bloc .json-bloc { margin-top: 4px; }
 
+/* Consignes de devoirs (DASH-4) */
+.consignes-card { border: 1px solid var(--border); border-radius: 16px; padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; }
+.consignes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.consigne-texte { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.consigne-origine { color: var(--ink-soft); text-decoration-color: var(--terracotta); }
+.consigne-fleche { color: var(--ink-placeholder); }
+.consigne-corrigee { text-decoration: none; background: var(--sand); border-radius: 4px; padding: 0 3px; }
+.consigne.is-retiree .consigne-texte { color: var(--ink-soft); }
+.consigne-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.consigne-flags .cell-note { margin: 0; }
+.ecran-activite { font-weight: 400; color: var(--ink-soft); letter-spacing: 0; }
+
+/* Miniatures de photos (DASH-3) */
+.photos-seance:empty, .photos-ecran:empty { display: none; }
+.photos-seance { display: flex; flex-direction: column; gap: 6px; }
+.photo-galerie { display: flex; flex-wrap: wrap; gap: 10px; }
+.photo-tuile { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 132px; }
+.photo-miniature { padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--sand); cursor: zoom-in; width: 132px; height: 96px; }
+.photo-miniature img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo-tuile.is-expiree .photo-miniature { opacity: 0.4; }
+.photo-effacee { display: flex; align-items: center; justify-content: center; width: 132px; height: 96px; border: 1px dashed var(--border); border-radius: 10px; font-size: 12.5px; font-style: italic; color: var(--terracotta-dark); }
+.photo-legende { font-size: 11.5px; color: var(--ink-soft); }
+.photo-tuile.is-redressee .photo-legende { color: var(--info); }
+.photo-emplacement { font-size: 12.5px; color: var(--ink-placeholder); }
+.photo-dialogue { border: 1px solid var(--border); border-radius: 16px; padding: 16px; max-width: min(960px, calc(100vw - 32px)); background: var(--cream); color: var(--ink); }
+.photo-dialogue::backdrop { background: rgba(61, 46, 31, 0.6); }
+.photo-grande { display: block; max-width: 100%; max-height: 75vh; margin: 0 auto; border-radius: 8px; }
+.photo-dialogue-legende { margin: 10px 0; font-size: 13px; color: var(--ink-soft); }
+.photo-dialogue-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.photos-par-seance { display: flex; flex-direction: column; gap: 14px; }
+.photos-groupe { display: flex; flex-direction: column; gap: 8px; }
+.photos-groupe-tete { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.photos-groupe-tete .cell-note { margin: 0; }
+.photos-groupe-contenu { font-size: 12.5px; color: var(--ink-placeholder); }
+
+/* Séances sans échange (lot SÉANCES) */
+.bandeau-sans-echange, .mention-sans-echange { margin: 0 0 12px; font-size: 13px; color: var(--ink-soft); }
+.table-row.is-sans-echange > * { color: var(--ink-placeholder); }
+.chip-sans-echange { margin-left: 6px; }
+
 /* Trace IA */
 .trace-generation { display: flex; flex-direction: column; gap: 10px; }
 .trace-generation-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

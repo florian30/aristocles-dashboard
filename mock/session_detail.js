@@ -1,6 +1,8 @@
 /* Mock de l'action `session_detail` — forme brute de l'Edge (§ 2.3),
    mot à mot, devoir et dictée compris (mock/fil.js).
-   Renvoie undefined pour une séance inconnue (→ 404 côté transport). */
+   Renvoie undefined pour une séance inconnue (→ 404 côté transport).
+   Comme l'Edge (DASH-3), les écrans arrivent dans l'ordre de leur
+   1re activité (`premiere_activite_at`, null en dernier, puis position). */
 
 import { ACQUISITIONS, CHILDREN, SESSIONS } from './donnees.js';
 import { devoirBrut, dicteeBrute, ecranId, interactionsEcran } from './fil.js';
@@ -28,7 +30,7 @@ export function session_detail(params) {
     },
     resume_seance: s.resume,
     homework: devoirBrut(s),
-    ecrans: s.ecrans.map((e) => ({
+    ecrans: s.ecrans.map((e) => ({ e, interactions: interactionsEcran(s, e.position) })).map(({ e, interactions }) => ({
       id: ecranId(s, e.position),
       position: e.position,
       type: e.type,
@@ -43,11 +45,12 @@ export function session_detail(params) {
         duree_secondes: x.dureeSec,
         notions: [...x.notions],
       })),
-      interactions: interactionsEcran(s, e.position),
+      premiere_activite_at: interactions.reduce((min, i) => (min && min <= i.created_at ? min : i.created_at), null),
+      interactions,
       dictee: dictee && dictee.ecran_id === ecranId(s, e.position)
         ? (({ session_id: _s, ...reste }) => reste)(dictee)
         : null,
-    })),
+    })).sort(parPremiereActivite),
     acquisitions: (ACQUISITIONS[s.childId] || []).map((a) => ({
       notion: a.notion,
       statut_maitrise: a.maitrise,
@@ -63,4 +66,11 @@ export function session_detail(params) {
       detail: structuredClone(e.detail),
     })),
   };
+}
+
+function parPremiereActivite(a, b) {
+  if (a.premiere_activite_at === b.premiere_activite_at) return a.position - b.position;
+  if (a.premiere_activite_at === null) return 1;
+  if (b.premiere_activite_at === null) return -1;
+  return a.premiere_activite_at.localeCompare(b.premiere_activite_at);
 }

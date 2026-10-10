@@ -17,7 +17,7 @@ python3 -m http.server 8000
 deno test tests/
 ```
 
-Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », adaptateur et filtres de la page Incidents (exemple du contrat recopié dans `tests/contrat_veille_exemples.js`), cache et transport de l'API, parcours en données factices.
+Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », adaptateur et filtres de la page Incidents (exemple du contrat recopié dans `tests/contrat_veille_exemples.js`), cache et transport de l'API, consignes de devoirs, ordre des écrans reçu tel quel, séances sans échange (param `avec_sans_echange`, compteur, cache), photos d'une séance (`photos_seance`, jamais en cache), parcours en données factices.
 
 ## Environnements et routes
 
@@ -39,7 +39,11 @@ L'environnement fait partie de l'URL (prod par défaut) :
 
 **Jours de Paris.** Le serveur compte en jour civil Europe/Paris : « hier », les bornes envoyées à `apercu`/`sante` (`ui/paris.js`) et les heures affichées suivent Paris, quel que soit le fuseau de la machine. Un coût IA inconnu s'affiche « inconnu » (jamais 0 €), avec le nombre d'appels concernés.
 
-**Photos de devoirs.** Le bouton « Télécharger » appelle l'action `photo` à chaque clic (URL signée de 5 minutes, jamais mise en cache, jamais affichée ni placée dans le hash) puis déclenche le téléchargement (`ui/photo.js`). Une photo purgée (404 `photo_purgee`, 90 jours) affiche « Photo effacée (purge automatique) ». En démo, le fichier est une image SVG factice et la seconde photo de chaque séance de devoirs est purgée.
+**Photos.** La relecture de séance et la fiche enfant (groupées par séance, 4 séances chargées à la fois) affichent les photos en miniatures (`ui/photo.js`). Elles viennent de l'action `photos_seance` : les URLs d'affichage sont signées en lot pour 1 heure, ne sont jamais mises en cache, ni affichées, ni placées dans le hash. Les photos arrivent dans l'ordre de prise de vue, et une version redressée suit son originale. Dans la séance, chaque miniature va dans la bulle de sa capture ; une photo de dictée va dans son écran. Un clic ouvre la photo en grand, avec le bouton « Télécharger » (action `photo`, URL signée de 5 minutes demandée à chaque clic). Une photo purgée (90 jours) s'affiche « Photo effacée ». Si une miniature ne charge plus (URL expirée), « Recharger » redemande le lot. Si `photos_seance` manque (Edge pas à jour) ou échoue, l'ancien bouton « Télécharger » revient. En démo, les images sont des SVG factices. La première photo de la séance de devoirs a une version redressée, la seconde est purgée, et chaque séance de dictée a une photo de copie.
+
+**Consignes de devoirs.** En tête d'une séance Devoirs, le bloc « Consignes » montre les consignes telles que l'enfant les a vues (`exercice_presente`). Une consigne corrigée par l'enfant s'affiche « texte d'origine → texte corrigé » (`metadata.enonce_origine`) ; si seule la matière a changé, elle porte « Matière corrigée ». Une consigne retirée est barrée, et une consigne ajoutée par l'enfant est signalée. Les écrans de la séance sont rendus dans l'ordre reçu : l'Edge les trie par 1re activité (`premiere_activite_at`, affichée dans l'en-tête de chaque écran).
+
+**Séances sans échange.** L'Edge écarte par défaut les séances sans aucun échange avec Ari et renvoie leur nombre (`seances_sans_echange`). Séances, La veille et la fiche enfant affichent « N séances sans échange masquées · Afficher ». Le lien pose `sans_echange=1` dans le hash, qui envoie `avec_sans_echange: true` à l'Edge. La veille et la fiche enfant grisent alors ces séances. La Vue d'ensemble et Familles les mentionnent seulement. Tant que l'Edge d'un environnement ne renvoie pas le compteur, rien ne s'affiche.
 
 **Dictées.** Chaque dictée (`ui/dictee.js`, partagé par La veille, la fiche enfant et la relecture de séance) montre l'heure, l'origine, la classe, l'étape (finie, à finir, non corrigée, échec), le texte dicté, les fautes comptées et réglées avec les règles revues, et le journal d'étapes compté par type. Une dictée sans classe vient de l'ancien flux : seule son étape « Ancien flux » est signalée. Tant que l'Edge d'un environnement ne rend pas ces champs (DICT-12), la partie concernée n'est simplement pas affichée.
 
@@ -63,7 +67,7 @@ auth.js         connexion par env (supabase-js ou simulée en démo)
 api.js          transport HTTP, cache 5 min par (env, action, params), adaptateurs
 router.js       analyse et fabrication des hash
 ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de Paris,
-                période, graphe SVG, blocs techniques partagés, téléchargement de photo
+                période, graphe SVG, blocs techniques partagés, miniatures et téléchargement de photos, bandeau des séances sans échange
 ui/dictee.js    rubrique Dictée (libellés purs + carte)
 ui/incidents.js page Incidents (sélection, filtres, libellés produit des codes)
 ui/messages.js  rubrique Messages (règles des formulaires, dates de Paris, refus de l'Edge)
