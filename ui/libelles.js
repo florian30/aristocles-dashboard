@@ -25,6 +25,9 @@ export const LIBELLE_FERMETURE = {
   interrompu_timeout_serveur: { label: 'Interrompu (timeout)', cls: 'is-muted' },
   interrompu_navigation: { label: 'Interrompu (navigation)', cls: 'is-muted' },
   abandon: { label: 'Abandonné', cls: 'is-failure' },
+  // Devoirs : consigne retirée ou sautée par l'enfant (DASH-4).
+  retire_par_enfant: { label: 'Retirée par l’enfant', cls: 'is-muted' },
+  saute_par_enfant: { label: 'Sautée par l’enfant', cls: 'is-muted' },
 };
 
 export const LIBELLE_RESULTAT = {

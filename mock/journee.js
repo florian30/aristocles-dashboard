@@ -9,6 +9,7 @@
 
 import { CHILDREN, SESSIONS } from './donnees.js';
 import { devoirBrut, dicteeBrute } from './fil.js';
+import { ecarteSansEchange } from './outils.js';
 import { aujourdhuiParis, debutJourParisMs, decalerJour, ecartJours, jourParis } from '../ui/paris.js';
 
 const enfantParId = Object.fromEntries(CHILDREN.map((c) => [c.id, c]));
@@ -53,6 +54,7 @@ export function resumeSeance(s, i) {
     nb_ecrans: s.ecrans.length,
     exercices: { nb: exercices.length, succes: compte('succes'), fragile: compte('fragile'), autres: exercices.length - compte('succes') - compte('fragile') },
     pouces: { haut, bas },
+    sans_echange: s.sansEchange,
     cloture: {
       soldee_at: fin ? new Date(debut + s.durationMin * 60000 + 5000).toISOString() : null,
       motif: fin ? (i % 5 === 2 ? 'fermeture_a_froid' : 'menage_complet') : null,
@@ -94,11 +96,11 @@ function iaDuJour(date, seances) {
 
 const TYPES_INCIDENT = ['tour_erreur', 'tour_anomalie', 'filet_echec_llm', 'ecriture_echec'];
 
-export function journeeBrute(date) {
+export function journeeBrute(date, params = {}) {
   const ja = joursAvant(date);
-  const seancesDuJour = SESSIONS
+  const { seances: seancesDuJour, nb: nbSansEchange } = ecarteSansEchange(SESSIONS
     .map((s, i) => ({ s, i }))
-    .filter(({ s }) => jourParis(s.startedAt) === date);
+    .filter(({ s }) => jourParis(s.startedAt) === date), params, (x) => x.s);
 
   const ids = new Set([
     ...seancesDuJour.map(({ s }) => s.childId),
@@ -143,6 +145,7 @@ export function journeeBrute(date) {
     date,
     from: new Date(debutJourParisMs(date)).toISOString(),
     to: new Date(debutJourParisMs(decalerJour(date, 1))).toISOString(),
+    seances_sans_echange: nbSansEchange,
     enfants,
     technique: {
       ia: iaDuJour(date, seancesDuJour.map(({ s }) => s)),
@@ -167,5 +170,5 @@ export function journeeBrute(date) {
 }
 
 export function journee(params = {}) {
-  return journeeBrute(params.date);
+  return journeeBrute(params.date, params);
 }

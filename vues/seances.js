@@ -1,6 +1,7 @@
 /* ============================================================
    Séances — liste (action `session`), filtrable par plage et
    par enfant. Chaque ligne ouvre le lecteur (vues/seance.js).
+   Les séances sans échange sont masquées sauf `sans_echange=1`.
    ============================================================ */
 
 import { construireHash } from '../router.js';
@@ -9,13 +10,14 @@ import { el, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtJourHeure, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE } from '../ui/libelles.js';
 import { plageDepuisQuery } from '../ui/plage.js';
+import { avecSansEchange, bandeauSansEchange } from '../ui/sans-echange.js';
 
 export const titre = 'Séances';
 
 export async function rendre({ route, api, signal }) {
   const plage = plageDepuisQuery(route.query);
-  const [seances, { enfants }] = await Promise.all([
-    api.sessions(route.env, plage.from, plage.to, route.query.child, { signal }),
+  const [{ seances, sansEchange }, { enfants }] = await Promise.all([
+    api.sessions(route.env, plage.from, plage.to, route.query.child, { signal, avecSansEchange: avecSansEchange(route) }),
     api.enfants(route.env, null, null, { signal }), // liste des enfants inscrits
   ]);
 
@@ -26,6 +28,8 @@ export async function rendre({ route, api, signal }) {
     enfants: enfants.map((e) => ({ childId: e.childId, name: e.prenom }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
   }));
+  const bandeau = bandeauSansEchange(route, sansEchange);
+  if (bandeau) vue.append(bandeau);
 
   vue.append(tableau({
     classe: 'sessions-table',

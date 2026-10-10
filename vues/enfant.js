@@ -1,7 +1,8 @@
 /* ============================================================
    Fiche enfant (action `enfant`) : identité et e-mail du parent,
    puis, sur la période choisie (≤ 92 jours, 92 par défaut) :
-   séances, photos de devoirs téléchargeables, maîtrise par notion
+   séances (sans échange masquées sauf `sans_echange=1`), photos de
+   devoirs en miniatures par séance, maîtrise par notion
    (état courant), devoirs, dictées, bilans et conversations parent,
    mémoire, écrans consultés, versions d'app.
    Tout contenu serveur (messages parent, sorties IA) passe par
@@ -26,14 +27,16 @@ import {
 } from '../ui/libelles.js';
 import { fmtInstantParis, fmtJourCourt, jourParis } from '../ui/paris.js';
 import { periodeDepuisQuery } from '../ui/periode.js';
-import { boutonPhoto } from '../ui/photo.js';
+import { estAnnulation } from '../api.js';
+import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 import { etoiles } from './familles.js';
 
 export const titre = 'Fiche enfant';
 
 export async function rendre({ route, api, signal }) {
   const periode = periodeDepuisQuery(route.query, new Date(), { defaut: '92j' });
-  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, { signal });
+  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, { signal, avecSansEchange: avecSansEchange(route) });
 
   const vue = el('div', 'vue vue-familles vue-enfant');
   vue.append(lien(construireHash({ env: route.env, vue: 'familles' }), 'reader-back', '← Retour aux familles'));
@@ -47,10 +50,13 @@ export async function rendre({ route, api, signal }) {
   vue.append(entete(fiche), barrePeriode(route, periode));
 
   const env = route.env;
+  const seances = section('Séances', fiche.seances.length, tableSeances(fiche.seances, env));
+  const bandeau = bandeauSansEchange(route, fiche.sansEchange);
+  if (bandeau) seances.querySelector('.section-title').after(bandeau);
   vue.append(
-    section('Séances', fiche.seances.length, tableSeances(fiche.seances, env)),
-    section('Photos de devoirs', fiche.photos.length, listePhotos(fiche.photos, api, env),
-      'Une photo est effacée automatiquement au bout de 90 jours : on ne le découvre qu’au téléchargement.'),
+    seances,
+    section('Photos de devoirs', fiche.photos.length, listePhotos(fiche.photos, api, env, signal),
+      'Une photo est effacée automatiquement au bout de 90 jours : elle s’affiche alors « Photo effacée ».'),
     section('Maîtrise par notion', fiche.maitrise.length, tableMaitrise(fiche.maitrise), 'État courant, quelle que soit la période.'),
     section('Devoirs', fiche.devoirs.length, listeDevoirs(fiche.devoirs, env)),
     section('Dictées', fiche.dictees.length, blocDictees(fiche.dictees, env),
@@ -120,10 +126,12 @@ function tableSeances(seances, env) {
       const mode = el('span', 'row-mode');
       mode.append(el('span', 'mode-dot is-' + s.mode), document.createTextNode(LIBELLE_MODE[s.mode] || s.mode));
       nom.append(mode, el('span', 'cell-note', s.theme || 'Sans thème'));
+      if (s.sansEchange) nom.append(puceSansEchange());
       const x = s.exercices;
       const cloture = libelleCloture(s.status, s.cloture);
       return {
         href: construireHash({ env, vue: 'seances', sessionId: s.id }),
+        classe: s.sansEchange ? 'is-sans-echange' : '',
         cellules: [
           el('span', 'row-date', fmtInstantParis(s.startedAt)),
           nom,
@@ -140,14 +148,59 @@ function tableSeances(seances, env) {
 
 // ---------- Photos ----------
 
-function listePhotos(photos, api, env) {
+// Groupées par séance (plus récente d'abord) ; miniatures chargées par
+// `photos_seance`, quelques séances à la fois. Si l'action manque ou
+// échoue, la séance retombe sur la liste à télécharger.
+const PHOTOS_EN_PARALLELE = 4;
+
+function listePhotos(photos, api, env, signal) {
   if (!photos.length) return vide('Aucune photo de devoir sur la période.');
+  const groupes = new Map();
+  for (const p of photos) {
+    const cle = p.sessionId || '';
+    if (!groupes.has(cle)) groupes.set(cle, []);
+    groupes.get(cle).push(p);
+  }
+  const bloc = el('div', 'photos-par-seance');
+  const aCharger = [];
+  for (const [sessionId, liste] of groupes) {
+    const groupe = el('section', 'photos-groupe');
+    const tete = el('div', 'photos-groupe-tete');
+    tete.append(el('span', 'row-name', 'Séance du ' + fmtInstantParis(liste[liste.length - 1].createdAt)));
+    if (sessionId) tete.append(lien(construireHash({ env, vue: 'seances', sessionId }), 'cell-note', 'Voir la séance'));
+    const contenu = el('div', 'photos-groupe-contenu', sessionId ? 'Chargement des photos…' : null);
+    groupe.append(tete, contenu);
+    bloc.append(groupe);
+    if (sessionId) aCharger.push({ sessionId, liste, contenu });
+    else contenu.append(lignesPhotos(liste, api, env));
+  }
+  (async () => {
+    let suivant = 0;
+    const ouvrier = async () => {
+      while (suivant < aCharger.length && !(signal && signal.aborted)) {
+        const { sessionId, liste, contenu } = aCharger[suivant++];
+        let lot = null;
+        try {
+          const r = await api.photosSeance(env, sessionId, { signal });
+          if (r) lot = creerLotPhotos({ api, env, sessionId, photos: r.photos });
+        } catch (e) {
+          if (estAnnulation(e)) return;
+        }
+        contenu.textContent = '';
+        contenu.append(lot ? galeriePhotos(lot.photos, lot) : lignesPhotos(liste, api, env));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PHOTOS_EN_PARALLELE, aCharger.length) }, ouvrier));
+  })();
+  return bloc;
+}
+
+function lignesPhotos(photos, api, env) {
   const liste = el('ul', 'photo-liste');
   for (const p of photos) {
     const li = el('li', 'photo-ligne');
     const infos = el('span', 'photo-infos');
     infos.append(el('span', 'row-name', 'Photo du ' + fmtInstantParis(p.createdAt)));
-    if (p.sessionId) infos.append(lien(construireHash({ env, vue: 'seances', sessionId: p.sessionId }), 'cell-note', 'Voir la séance'));
     li.append(infos, boutonPhoto({ api, env, interactionId: p.interactionId, libelle: 'Télécharger' }));
     liste.append(li);
   }

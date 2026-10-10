@@ -116,6 +116,23 @@ const SCENARIOS = [
         synthese: "Bilan : règle du COD placé avant le verbe restituée correctement en fin de séance.",
         exercices: [],
       },
+      // Consigne lue sur la photo puis retirée par l'enfant (« Ce que j'ai
+      // compris ») : l'écran reste, fermé `retire_par_enfant`.
+      {
+        position: 5, type: 'exercice', statutFermeture: 'retire_par_enfant', pouce: null,
+        synthese: null,
+        exercices: [],
+      },
+      // Consigne ajoutée par l'enfant : écran créé après les autres
+      // (position 6), mais sa 1re activité précède les exercices 2 et 3.
+      {
+        position: 6, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null,
+        synthese: "Conjugaison de « finir » au passé composé avec « nous » : réponse juste du premier coup.",
+        exercices: [
+          { id: 'xr-203', enonce: "Conjugue « finir » au passé composé avec « nous ».",
+            resultat: 'succes', origine: 'devoir_scolaire', dureeSec: 40, notions: ['Le passé composé'] },
+        ],
+      },
     ],
   },
   // 2 — La division posée (entraînement)
@@ -202,6 +219,15 @@ const SCENARIOS = [
     ecrans: [
       { position: 1, type: 'exercice', statutFermeture: 'resolu_succes', pouce: null, synthese: null, exercices: [] },
     ],
+  },  // 6 — Séance sans échange : l'enfant entre puis ressort aussitôt
+  // (session.sans_echange = true, posée à l'archivage ; lot SÉANCES).
+  {
+    theme: null,
+    notion: null,
+    resume: null,
+    ecrans: [
+      { position: 1, type: 'vue_ensemble', statutFermeture: 'interrompu_navigation', pouce: null, synthese: null, exercices: [] },
+    ],
   },
 ];
 
@@ -244,6 +270,11 @@ const SESSION_SEEDS = [
   [5,  '18:10', 'c6', 'dictee',       12, 5, { origine: 'devoir', etape: 'fin', niveau: 'moyen',
     texte: 'Demain, la classe ira visiter le musée de la ville.', mots: ['demain', 'musée'],
     fautes: [], ev: { ouverture: 1, etape: 7, verdict: 2, cloture: 1 } }],
+  // Séances sans échange (scénario 6) : masquées par défaut par l'Edge.
+  [1,  '16:02', 'c1', 'entrainement',  0, 6],
+  [1,  '16:40', 'c2', 'devoirs',       0, 6],
+  [0,  '07:55', 'c4', 'entrainement',  0, 6],
+  [5,  '12:10', 'c4', 'entrainement',  0, 6],
 ];
 
 export const isoDaysAgo = (n) => isoJoursAvant(n);
@@ -269,6 +300,8 @@ export const SESSIONS = SESSION_SEEDS.map((seed, i) => {
     mode, // 'devoirs' | 'entrainement' | 'dictee'
     dictee, // mode 'dictee' : la dictée du passage (mock/fil.js dicteeBrute)
     status: durationMin == null ? 'active' : 'archivee',
+    // session.sans_echange : null tant que la séance est active.
+    sansEchange: durationMin == null ? null : scenarioIdx === 6,
     durationMin, // null = session active
     theme: scenario.theme,
     notion: scenario.notion,

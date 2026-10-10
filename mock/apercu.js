@@ -59,7 +59,7 @@ function apercuDictees(dictees) {
 }
 
 export function apercu(params = {}) {
-  const jours = joursDeLaPlage(params).map((j) => journeeBrute(j));
+  const jours = joursDeLaPlage(params).map((j) => journeeBrute(j, params));
   const enfants = new Set();
   const seances = [];
   const entrees = { apprentissage: 0, devoirs: 0, dictee: 0, autre: 0 };
@@ -98,6 +98,7 @@ export function apercu(params = {}) {
         dictee: seances.filter((s) => s.mode === 'dictee').length,
       },
     },
+    seances_sans_echange: jours.reduce((a, j) => a + j.seances_sans_echange, 0),
     dictees: apercuDictees(jours.flatMap((j) => j.enfants.flatMap((c) => c.dictees))),
     minutes: serie.reduce((a, p) => a + p.minutes, 0),
     exercices: ex,

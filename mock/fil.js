@@ -51,7 +51,11 @@ const FILS = {
       [66, 'message_tuteur', "Parfait, on les fait l'une après l'autre."],
     ],
     2: [
-      [90, 'exercice_presente', "Complète en accordant le participe passé si nécessaire : « Les lettres que j'ai (écrire) … sont sur la table. »", { meta: { exercise_id: 'xr-201' } }],
+      // Consigne corrigée par l'enfant : le texte lu sur la photo reste dans
+      // metadata.enonce_origine, contenu_texte porte la version corrigée.
+      [90, 'exercice_presente', "Complète en accordant le participe passé si nécessaire : « Les lettres que j'ai (écrire) … sont sur la table. »", { meta: {
+        exercise_id: 'xr-201', matiere: 'français', confiance: 'moyenne', corrige_par_enfant: true,
+        enonce_origine: "Complète en acordant le participe passé : « Les lettres que j'ai (écrire) … sont sur la tabe. »" } }],
       [95, 'message_tuteur', "Dans cette phrase, qu'est-ce qui a été écrit ?"],
       [110, 'message_enfant_vocal', "les lettres"],
       [114, 'message_tuteur', "Oui ! Et « les lettres », tu les trouves avant ou après « ai écrit » ?"],
@@ -63,7 +67,7 @@ const FILS = {
       [170, 'pouce_haut_bas', null, { meta: { valeur: 'haut' } }],
     ],
     3: [
-      [200, 'exercice_presente', "Complète en accordant le participe passé si nécessaire : « Elles ont (manger) … une pomme. »", { meta: { exercise_id: 'xr-202' } }],
+      [200, 'exercice_presente', "Complète en accordant le participe passé si nécessaire : « Elles ont (manger) … une pomme. »", { meta: { exercise_id: 'xr-202', matiere: 'français', confiance: 'haute' } }],
       [204, 'message_tuteur', "À toi pour la deuxième phrase. Qu'est-ce qu'elles ont mangé ?"],
       [220, 'message_enfant_vocal', "une pomme… alors mangées"],
       [225, 'message_tuteur', "Regarde bien : « une pomme » est avant ou après le verbe ?"],
@@ -71,8 +75,18 @@ const FILS = {
       [244, 'message_tuteur', "Exactement. Le COD est après le verbe : on n'accorde pas."],
       [250, 'exercice_resolu', null, { meta: { exercise_id: 'xr-202', resultat: 'fragile' } }],
     ],
+    5: [
+      [72, 'exercice_presente', "Recopie la leçon sur le participe passé dans ton cahier.", { meta: { matiere: 'français', confiance: 'basse' } }],
+    ],
+    6: [
+      [80, 'exercice_presente', "Conjugue « finir » au passé composé avec « nous ».", { meta: { matiere: 'français', notions_pressenties: [], confiance: 'haute', ajoute_par_enfant: true } }],
+      [262, 'message_tuteur', "Il reste la consigne que tu as ajoutée : « finir » avec « nous », au passé composé ?"],
+      [275, 'message_enfant_vocal', "nous avons fini"],
+      [279, 'message_tuteur', "Exactement : « avons » et le participe « fini »."],
+      [284, 'exercice_resolu', null, { meta: { exercise_id: 'xr-203', resultat: 'succes' } }],
+    ],
     4: [
-      [300, 'message_tuteur', "Tes deux phrases sont prêtes pour demain. Tu te souviens quand on accorde avec avoir ?"],
+      [300, 'message_tuteur', "Tes devoirs sont prêts pour demain. Tu te souviens quand on accorde avec avoir ?"],
       [318, 'message_enfant_vocal', "quand le COD il est avant"],
       [322, 'message_tuteur', "C'est ça. À bientôt !"],
     ],
@@ -156,7 +170,7 @@ export function devoirBrut(s) {
     pour_le: decalerJour(jourParis(s.startedAt), 1),
     matiere: MATIERE[s.scenarioIdx] || 'maths',
     titre: s.theme + ' — exercices 3 et 4 p. 58',
-    nb_consignes: 2,
+    nb_consignes: 3,
     created_at: instant(s, 30),
   };
 }

@@ -28,7 +28,7 @@ Deno.test('mock : l’action stats n’existe plus (400)', async () => {
 
 Deno.test('mock : liste et détail de séance, detail imbriqué sérialisable', async () => {
   const a = api();
-  const liste = await a.sessions('dev', null, null, 'all');
+  const { seances: liste } = await a.sessions('dev', null, null, 'all');
   assert(liste.length > 0);
   const avecTrace = liste.find((x) => x.id === 'ses-02');
   const d = await a.detail('dev', avecTrace.id);

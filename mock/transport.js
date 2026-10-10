@@ -11,6 +11,7 @@ import { creerConsoleMock } from './console.js';
 import { enfant, enfants } from './familles.js';
 import { journee } from './journee.js';
 import { photo } from './photo.js';
+import { photos_seance } from './photos_seance.js';
 import { sante } from './sante.js';
 import { session } from './session.js';
 import { session_detail } from './session_detail.js';
@@ -18,7 +19,7 @@ import { tour } from './tour.js';
 import { veille } from './veille.js';
 
 // `stats` n'existe plus côté front : une action inconnue répond 400.
-const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo, veille };
+const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo, photos_seance, veille };
 
 function attendre(ms, signal) {
   return new Promise((resoudre, rejeter) => {
