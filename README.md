@@ -33,6 +33,7 @@ L'environnement fait partie de l'URL (prod par défaut) :
 | `#/{env}/seances/{session_id}/tour/{llm_generation_id}` | Trace IA d'une réplique d'Ari (action `tour`) : génération, prompt système, requête et réponse brutes |
 | `#/{env}/sante` | Santé & coûts (action `sante`) |
 | `#/{env}/incidents?jours=7\|14\|30\|92` | Incidents (action `veille`) : les huit familles de la veille de la prod (vert / orange / rouge), la frise jour par jour (aujourd'hui partiel) et le détail des lignes d'une famille ou d'un jour (`&famille=F1…F8`, `&jour=AAAA-MM-JJ`) ; 14 jours par défaut |
+| `#/{env}/messages`, `#/{env}/messages?onglet=app` | Messages (Edge `notifs_console`) : notifications push (écrire, aperçu et audience, essai sur un téléphone, envoyer ou programmer, annuler, résultats) ; messages dans l'app (liste, écrire, publier / retirer) |
 
 `{env}` vaut `prod` ou `dev`. En dev, un bandeau orange « BAC À SABLE — dev » reste affiché en permanence. Une date inexistante dans l'URL de La veille (ex. `2026-02-30`) ramène à hier. Les filtres sont dans le hash, donc un rafraîchissement les garde : `?periode=hier|7j|30j|tout`, `from`, `to`, `child` pour les Séances ; `?periode=7j|30j|92j` ou `from`/`to` pour la Vue d'ensemble, Santé & coûts et la fiche enfant (jours civils de Paris, plage ramenée à 92 jours avec un message si elle dépasse).
 
@@ -41,6 +42,8 @@ L'environnement fait partie de l'URL (prod par défaut) :
 **Photos de devoirs.** Le bouton « Télécharger » appelle l'action `photo` à chaque clic (URL signée de 5 minutes, jamais mise en cache, jamais affichée ni placée dans le hash) puis déclenche le téléchargement (`ui/photo.js`). Une photo purgée (404 `photo_purgee`, 90 jours) affiche « Photo effacée (purge automatique) ». En démo, le fichier est une image SVG factice et la seconde photo de chaque séance de devoirs est purgée.
 
 **Dictées.** Chaque dictée (`ui/dictee.js`, partagé par La veille, la fiche enfant et la relecture de séance) montre l'heure, l'origine, la classe, l'étape (finie, à finir, non corrigée, échec), le texte dicté, les fautes comptées et réglées avec les règles revues, et le journal d'étapes compté par type. Une dictée sans classe vient de l'ancien flux : seule son étape « Ancien flux » est signalée. Tant que l'Edge d'un environnement ne rend pas ces champs (DICT-12), la partie concernée n'est simplement pas affichée.
+
+**Messages.** La rubrique parle à une autre Edge, `POST {url}/functions/v1/notifs_console`, avec le même jeton, la même `apikey` et le même corps `{action, params}` ; ses réponses ne sont jamais mises en cache. Chaque envoi porte un numéro (`campagne_id`, UUID) tiré par l'écran **une fois** et réutilisé à chaque nouvel essai (coupure réseau, 409 `en_cours`, doublon confirmé) : le serveur ne fait jamais partir deux fois la même campagne ; un nouveau numéro n'est tiré qu'après un envoi abouti. Les avertissements (nuit, repère hebdo et mensuel, doublon probable) s'affichent sans bloquer ; envoyer, programmer, annuler, publier et retirer demandent une confirmation dans la page (jamais de `confirm()`). Les dates se saisissent à l'heure de Paris et partent avec leur fuseau. Le formulaire des messages dans l'app reprend les règles de la table `message_in_app` (accueil enfant = feuille, jamais d'adresse web côté enfant, bouton obligatoire pour mener quelque part…) pour nommer le champ fautif ; le serveur reste juge et ses refus s'affichent tels quels. Le déclencheur « ouvert par une notification » n'est pas proposé : aucune notification ne sait encore ouvrir un message ; un message qui le porte s'affiche en lecture seule, marqué « pas encore servi ». Un 503 (table ou secret Firebase absents, ex. prod avant la release) affiche « pas disponible sur <env> ». En démo, un texte contenant « coupure » simule une réponse perdue, « bloque » un envoi resté en cours ; le mock garde son état jusqu'au rechargement.
 
 **Contenu non fiable.** Le mot à mot de l'enfant, les messages des parents et les sorties des modèles sont affichés uniquement par `textContent` (aucun `innerHTML` dans le dépôt).
 
@@ -63,8 +66,10 @@ ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de 
                 période, graphe SVG, blocs techniques partagés, téléchargement de photo
 ui/dictee.js    rubrique Dictée (libellés purs + carte)
 ui/incidents.js page Incidents (sélection, filtres, libellés produit des codes)
+ui/messages.js  rubrique Messages (règles des formulaires, dates de Paris, refus de l'Edge)
 vues/           une vue par fichier (enfant.js : fiche, tour.js : trace IA)
 mock/           données factices par action (formes brutes de l'Edge) ;
-                fil.js : mot à mot, photos, devoirs, dictées, traces IA
+                fil.js : mot à mot, photos, devoirs, dictées, traces IA ;
+                console.js : Edge notifs_console factice, avec état
 tests/          tests Deno
 ```

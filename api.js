@@ -25,20 +25,28 @@
    sante(env, from, to) → voir adapterSante (Santé & coûts)
    veille(env, jours) → voir adapterVeille (Incidents : familles F1-F8,
      série par jour, lignes de la vue ; `jours` entier 1..92)
+   console.* → Edge `notifs_console` (rubrique Messages), JAMAIS en
+     cache : écritures, envois, et des lectures qui doivent être fraîches.
+     Formes de l'Edge rendues telles quelles (snake_case), complétées des
+     valeurs par défaut (adapterResultats, adapterMessages). Un refus garde
+     son corps sur ApiError.donnees (409 doublon / en_cours / deja_partie).
    Pour ces actions, les jours sont des jours civils de Paris
    ('AAAA-MM-JJ') ; from/to sont convertis en bornes ISO (≤ 92 j).
    ============================================================ */
 
-import { CACHE_TTL_MS, ENVS, urlDashboard } from './config.js';
+import { CACHE_TTL_MS, ENVS, urlEdge } from './config.js';
 import { dateLocale, enMinutes, heureLocale } from './ui/format.js';
 import { bornesParis, heureParis } from './ui/paris.js';
 import { adapterLlm } from './ui/unites.js';
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, donnees = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status; // 0 = serveur injoignable
+    // Corps JSON de la réponse d'erreur : un 409 de `notifs_console`
+    // porte la campagne en cause, l'écran en a besoin.
+    this.donnees = donnees;
   }
 }
 
@@ -77,13 +85,14 @@ export function creerCache({ ttlMs = CACHE_TTL_MS, maintenant = () => Date.now()
 // ---------- Transport HTTP ----------
 
 // obtenirJeton(env) → access_token courant (ou null).
+// options.edge : 'dashboard' (défaut) ou 'notifs_console'.
 export function transportHttp(obtenirJeton, fetchImpl = (...a) => fetch(...a)) {
-  return async (env, action, params, { signal } = {}) => {
+  return async (env, action, params, { signal, edge = 'dashboard' } = {}) => {
     const jeton = await obtenirJeton(env);
     if (!jeton) throw new ApiError('Session absente — reconnectez-vous.', 401);
     let reponse;
     try {
-      reponse = await fetchImpl(urlDashboard(env), {
+      reponse = await fetchImpl(urlEdge(env, edge), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +110,7 @@ export function transportHttp(obtenirJeton, fetchImpl = (...a) => fetch(...a)) {
     try { donnees = await reponse.json(); } catch (_) { /* réponse non JSON */ }
     if (!reponse.ok) {
       const message = (donnees && donnees.error) || 'Erreur serveur (' + reponse.status + ')';
-      throw new ApiError(message, reponse.status);
+      throw new ApiError(message, reponse.status, donnees);
     }
     return donnees;
   };
@@ -676,6 +685,56 @@ export function adapterVeille(data) {
   };
 }
 
+// ---------- Console Messages (`notifs_console`) ----------
+
+const tableauOuVide = (v) => (Array.isArray(v) ? v : []);
+const entierOuZero = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+export function adapterCampagne(c) {
+  return {
+    ...c,
+    cible: c.cible || {},
+    parents: entierOuZero(c.parents),
+    appareils: entierOuZero(c.appareils),
+    envoyes: entierOuZero(c.envoyes),
+    perimes: entierOuZero(c.perimes),
+    echecs: entierOuZero(c.echecs),
+    ouverts: entierOuZero(c.ouverts),
+    en_retard: Boolean(c.en_retard),
+    codes_echec: c.codes_echec || {},
+  };
+}
+
+export function adapterResultats(data) {
+  return {
+    jours: data.jours,
+    campagnes: tableauOuVide(data.campagnes).map(adapterCampagne),
+    automatiques: tableauOuVide(data.automatiques).map((a) => ({
+      type: a.type, envoyes: entierOuZero(a.envoyes), perimes: entierOuZero(a.perimes), echecs: entierOuZero(a.echecs),
+    })),
+  };
+}
+
+export function adapterMessages(data) {
+  return tableauOuVide(data.messages).map((m) => ({ ...m, points: tableauOuVide(m.points), cible: m.cible || {} }));
+}
+
+export function adapterApercuNotif(data) {
+  const a = data.audience || {};
+  return {
+    message: data.message || {},
+    audience: {
+      familles: entierOuZero(a.familles),
+      avecAppareil: entierOuZero(a.avec_appareil),
+      joignables: entierOuZero(a.joignables),
+      typeCoupe: entierOuZero(a.type_coupe),
+      appareils: entierOuZero(a.appareils),
+      parPlateforme: { ios: entierOuZero(a.par_plateforme?.ios), android: entierOuZero(a.par_plateforme?.android) },
+    },
+    avertissements: tableauOuVide(data.avertissements),
+  };
+}
+
 // ---------- Client ----------
 
 export function creerApi({ transport, cache = creerCache() }) {
@@ -744,8 +803,46 @@ export function creerApi({ transport, cache = creerCache() }) {
     async photo(env, interactionId, options = {}) {
       return adapterPhoto(await transport(env, 'photo', { interaction_id: interactionId }, options));
     },
+    console: creerConsole(transport),
     viderCache(env) {
       cache.viderEnv(env);
+    },
+  };
+}
+
+// Les neuf actions de `notifs_console`, hors cache.
+function creerConsole(transport) {
+  const appeler = (env, action, params, options = {}) =>
+    transport(env, action, params, { ...options, edge: 'notifs_console' });
+  return {
+    async apercu(env, params, options) {
+      return adapterApercuNotif(await appeler(env, 'apercu', params, options));
+    },
+    async appareils(env, parentId, options) {
+      return tableauOuVide((await appeler(env, 'appareils', { parent_id: parentId }, options)).appareils);
+    },
+    envoyerTest(env, appareilId, message, options) {
+      return appeler(env, 'envoyer_test', { appareil_id: appareilId, message }, options);
+    },
+    async envoyer(env, params, options) {
+      const r = await appeler(env, 'envoyer', params, options);
+      return { ...r, campagne: adapterCampagne(r.campagne || {}), avertissements: tableauOuVide(r.avertissements) };
+    },
+    async annuler(env, campagneId, options) {
+      const r = await appeler(env, 'annuler', { campagne_id: campagneId }, options);
+      return { ...r, campagne: adapterCampagne(r.campagne || {}) };
+    },
+    async resultats(env, jours, options) {
+      return adapterResultats(await appeler(env, 'resultats', jours ? { jours } : {}, options));
+    },
+    async messages(env, options) {
+      return adapterMessages(await appeler(env, 'messages', {}, options));
+    },
+    async ecrireMessage(env, messageId, params, options) {
+      return (await appeler(env, 'message_ecrire', { message_id: messageId, ...params }, options)).message;
+    },
+    async activerMessage(env, messageId, actif, options) {
+      return (await appeler(env, 'message_activer', { message_id: messageId, actif }, options)).message;
     },
   };
 }

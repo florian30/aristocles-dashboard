@@ -38,5 +38,13 @@ export function estModeMock(search) {
 }
 
 export function urlDashboard(env) {
-  return ENVS[env].url + '/functions/v1/dashboard';
+  return urlEdge(env, 'dashboard');
+}
+
+// Edges appelées par le dashboard : `dashboard` (lecture) et
+// `notifs_console` (rubrique Messages). Même jeton, même apikey.
+export const EDGES = ['dashboard', 'notifs_console'];
+
+export function urlEdge(env, nom = 'dashboard') {
+  return ENVS[env].url + '/functions/v1/' + nom;
 }

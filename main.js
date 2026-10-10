@@ -17,6 +17,7 @@ import * as vueConnexion from './vues/connexion.js';
 import * as vueEnfant from './vues/enfant.js';
 import * as vueFamilles from './vues/familles.js';
 import * as vueIncidents from './vues/incidents.js';
+import * as vueMessages from './vues/messages.js';
 import * as vueSante from './vues/sante.js';
 import * as vueSeance from './vues/seance.js';
 import * as vueSeances from './vues/seances.js';
@@ -40,6 +41,7 @@ const NAVIGATION = [
   { vue: 'seances', libelle: 'Séances' },
   { vue: 'sante', libelle: 'Santé & coûts' },
   { vue: 'incidents', libelle: 'Incidents' },
+  { vue: 'messages', libelle: 'Messages' },
 ];
 
 const racine = document.getElementById('racine');
@@ -58,7 +60,7 @@ let ecranCourant = null; // identité de l'écran affiché (vue + identifiants)
 function vuePour(route) {
   if (route.vue === 'seances') return route.generationId ? vueTour : route.sessionId ? vueSeance : vueSeances;
   if (route.vue === 'familles' && route.childId) return vueEnfant;
-  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents }[route.vue];
+  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents, messages: vueMessages }[route.vue];
 }
 
 // ---------- Rendu d'une route ----------
