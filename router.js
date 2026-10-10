@@ -7,6 +7,8 @@
    #/{env}/seances/{session_id}/tour/{llm_generation_id}  (trace IA)
    #/{env}/sante
    #/{env}/incidents          (veille de la prod, action `veille`)
+   #/{env}/messages           (?onglet=app : messages dans l'app ;
+                               sans onglet : notifications)
    Une query optionnelle (`?from=…&to=…&child=…`) porte les filtres
    des écrans de liste, pour qu'un rafraîchissement les conserve.
 
@@ -17,7 +19,7 @@
 import { ENV_PAR_DEFAUT, estEnvValide } from './config.js';
 import { estDateCivile } from './ui/paris.js';
 
-export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents'];
+export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents', 'messages'];
 
 // Route : { env, vue, date?, childId?, sessionId?, generationId?, query }
 // `canonique` vaut false quand le hash d'origine doit être réécrit

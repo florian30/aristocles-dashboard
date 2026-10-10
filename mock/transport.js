@@ -7,6 +7,7 @@
 
 import { ApiError } from '../api.js';
 import { apercu } from './apercu.js';
+import { creerConsoleMock } from './console.js';
 import { enfant, enfants } from './familles.js';
 import { journee } from './journee.js';
 import { photo } from './photo.js';
@@ -30,12 +31,15 @@ function attendre(ms, signal) {
   });
 }
 
-export function transportMock({ estConnecte, estAutorise, delaiMs = 250 }) {
-  return async (env, action, params = {}, { signal } = {}) => {
+// L'Edge `notifs_console` factice a un état (campagnes, messages) : un
+// par transport, donc par chargement de la page.
+export function transportMock({ estConnecte, estAutorise, delaiMs = 250, console: consoleMock = creerConsoleMock() }) {
+  return async (env, action, params = {}, { signal, edge = 'dashboard' } = {}) => {
     await attendre(delaiMs, signal);
     if (!estConnecte(env)) throw new ApiError('Jeton absent ou invalide.', 401);
     if (!estAutorise(env)) throw new ApiError('Compte non autorisé.', 403);
-    const handler = ACTIONS[action];
+    const table = edge === 'notifs_console' ? consoleMock : ACTIONS;
+    const handler = Object.hasOwn(table, action) ? table[action] : null;
     if (!handler) throw new ApiError('Action inconnue : ' + action, 400);
     const donnees = handler(params); // un handler peut lever sa propre ApiError
     if (donnees === undefined) throw new ApiError('Introuvable.', 404);
