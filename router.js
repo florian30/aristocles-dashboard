@@ -9,6 +9,9 @@
    #/{env}/incidents          (veille de la prod, action `veille`)
    #/{env}/messages           (?onglet=app : messages dans l'app ;
                                sans onglet : notifications)
+   #/{env}/retours            #/{env}/retours/{retour_id}
+                              (retours parents « Votre avis », AVIS-3 ;
+                               ?statut=nouveau|lu|inscrit|clos)
    Une query optionnelle (`?from=…&to=…&child=…`) porte les filtres
    des écrans de liste, pour qu'un rafraîchissement les conserve.
 
@@ -19,9 +22,9 @@
 import { ENV_PAR_DEFAUT, estEnvValide } from './config.js';
 import { estDateCivile } from './ui/paris.js';
 
-export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents', 'messages'];
+export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents', 'messages', 'retours'];
 
-// Route : { env, vue, date?, childId?, sessionId?, generationId?, query }
+// Route : { env, vue, date?, childId?, sessionId?, generationId?, retourId?, query }
 // `canonique` vaut false quand le hash d'origine doit être réécrit
 // (env inconnu, vue inconnue, segments superflus…).
 export function analyserHash(hash) {
@@ -52,6 +55,9 @@ export function analyserHash(hash) {
     route.sessionId = a || null;
     route.generationId = a && b === 'tour' && c ? c : null;
     attendus = route.generationId ? 5 : a ? 3 : 2;
+  } else if (vue === 'retours') {
+    route.retourId = a || null;
+    if (a) attendus = 3;
   }
   route.canonique = segments.length === attendus;
   return route;
@@ -67,6 +73,7 @@ export function construireHash(route) {
     segments.push(route.sessionId);
     if (route.generationId) segments.push('tour', route.generationId);
   }
+  if (vue === 'retours' && route.retourId) segments.push(route.retourId);
   let hash = '#/' + segments.map(encodeURIComponent).join('/');
   const query = Object.entries(route.query || {}).filter(([, v]) => v != null && v !== '');
   if (query.length) hash += '?' + new URLSearchParams(query).toString();

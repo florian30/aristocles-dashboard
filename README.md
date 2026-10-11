@@ -17,7 +17,7 @@ python3 -m http.server 8000
 deno test tests/
 ```
 
-Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », adaptateur et filtres de la page Incidents (exemple du contrat recopié dans `tests/contrat_veille_exemples.js`), cache et transport de l'API, consignes de devoirs, ordre des écrans reçu tel quel, séances sans échange (param `avec_sans_echange`, compteur, cache), photos d'une séance (`photos_seance`, jamais en cache), parcours en données factices.
+Ils couvrent les modules purs : routeur, formatage et unités des coûts, plages de dates, jours civils de Paris (hier, navigation de jour, bornes ≤ 92 j), échelle et géométrie du graphe, mise en forme santé, adaptateurs (dont les exemples du contrat v2 recopiés dans `tests/contrat_v2_exemples.js` : journee, apercu, sante, enfants, enfant, session_detail, tour, photo), photo jamais en cache, date inexistante rejetée, journée « vide », adaptateur et filtres de la page Incidents (exemple du contrat recopié dans `tests/contrat_veille_exemples.js`), cache et transport de l'API, consignes de devoirs, ordre des écrans reçu tel quel, séances sans échange (param `avec_sans_echange`, compteur, cache), photos d'une séance (`photos_seance`, jamais en cache), page Retours (exemples du contrat recopiés dans `tests/contrat_retours_exemples.js`, `retour` jamais en cache, `retour_statut` qui vide le cache et n'envoie la référence que si elle est fournie, mock à état, règle de la référence registre), parcours en données factices.
 
 ## Environnements et routes
 
@@ -34,6 +34,7 @@ L'environnement fait partie de l'URL (prod par défaut) :
 | `#/{env}/sante` | Santé & coûts (action `sante`) |
 | `#/{env}/incidents?jours=7\|14\|30\|92` | Incidents (action `veille`) : les huit familles de la veille de la prod (vert / orange / rouge), la frise jour par jour (aujourd'hui partiel) et le détail des lignes d'une famille ou d'un jour (`&famille=F1…F8`, `&jour=AAAA-MM-JJ`) ; 14 jours par défaut |
 | `#/{env}/messages`, `#/{env}/messages?onglet=app` | Messages (Edge `notifs_console`) : notifications push (écrire, aperçu et audience, essai sur un téléphone, envoyer ou programmer, annuler, résultats) ; messages dans l'app (liste, écrire, publier / retirer) |
+| `#/{env}/retours?statut=…`, `#/{env}/retours/{retour_id}` | Retours des parents « Votre avis » (actions `retours`, `retour`, `retour_statut`) : liste des 92 derniers jours filtrable par statut, détail (texte en entier, contexte, capture, fil d'usage du lancement, erreurs des 7 jours d'avant), statut et référence registre, « Copier la fiche » |
 
 `{env}` vaut `prod` ou `dev`. En dev, un bandeau orange « BAC À SABLE — dev » reste affiché en permanence. Une date inexistante dans l'URL de La veille (ex. `2026-02-30`) ramène à hier. Les filtres sont dans le hash, donc un rafraîchissement les garde : `?periode=hier|7j|30j|tout`, `from`, `to`, `child` pour les Séances ; `?periode=7j|30j|92j` ou `from`/`to` pour la Vue d'ensemble, Santé & coûts et la fiche enfant (jours civils de Paris, plage ramenée à 92 jours avec un message si elle dépasse).
 
@@ -48,6 +49,8 @@ L'environnement fait partie de l'URL (prod par défaut) :
 **Dictées.** Chaque dictée (`ui/dictee.js`, partagé par La veille, la fiche enfant et la relecture de séance) montre l'heure, l'origine, la classe, l'étape (finie, à finir, non corrigée, échec), le texte dicté, les fautes comptées et réglées avec les règles revues, et le journal d'étapes compté par type. Une dictée sans classe vient de l'ancien flux : seule son étape « Ancien flux » est signalée. Tant que l'Edge d'un environnement ne rend pas ces champs (DICT-12), la partie concernée n'est simplement pas affichée.
 
 **Messages.** La rubrique parle à une autre Edge, `POST {url}/functions/v1/notifs_console`, avec le même jeton, la même `apikey` et le même corps `{action, params}` ; ses réponses ne sont jamais mises en cache. Chaque envoi porte un numéro (`campagne_id`, UUID) tiré par l'écran **une fois** et réutilisé à chaque nouvel essai (coupure réseau, 409 `en_cours`, doublon confirmé) : le serveur ne fait jamais partir deux fois la même campagne ; un nouveau numéro n'est tiré qu'après un envoi abouti. Les avertissements (nuit, repère hebdo et mensuel, doublon probable) s'affichent sans bloquer ; envoyer, programmer, annuler, publier et retirer demandent une confirmation dans la page (jamais de `confirm()`). Les dates se saisissent à l'heure de Paris et partent avec leur fuseau. Le formulaire des messages dans l'app reprend les règles de la table `message_in_app` (accueil enfant = feuille, jamais d'adresse web côté enfant, bouton obligatoire pour mener quelque part…) pour nommer le champ fautif ; le serveur reste juge et ses refus s'affichent tels quels. Le déclencheur « ouvert par une notification » n'est pas proposé : aucune notification ne sait encore ouvrir un message ; un message qui le porte s'affiche en lecture seule, marqué « pas encore servi ». Un 503 (table ou secret Firebase absents, ex. prod avant la release) affiche « pas disponible sur <env> ». En démo, un texte contenant « coupure » simule une réponse perdue, « bloque » un envoi resté en cours ; le mock garde son état jusqu'au rechargement.
+
+**Retours.** La page montre ce que les parents envoient depuis « Votre avis sur l'application » (AVIS-3, contrat-dashboard.md § 2.13 à 2.15). L'onglet porte une pastille « N nouveaux ». La liste est en cache 5 min ; le détail (`retour`) ne l'est **jamais** : la capture d'écran arrive par une URL signée valable 1 heure, que « Recharger » redemande. Ouvrir un retour ne change pas son statut ; « Marquer lu », le sélecteur de statut et la référence registre (`R-JJMM-sujet`, vide = effacée) passent par `retour_statut`, **la seule écriture du dashboard**, qui vide le cache de l'env. « Copier la fiche » copie le bloc prêt à coller dans Claude Code, le même que dans l'e-mail du matin. Le texte du parent, l'appareil et le détail des événements s'affichent toujours en `textContent`. En démo, le mock garde le statut changé jusqu'au rechargement.
 
 **Contenu non fiable.** Le mot à mot de l'enfant, les messages des parents et les sorties des modèles sont affichés uniquement par `textContent` (aucun `innerHTML` dans le dépôt).
 
@@ -71,9 +74,11 @@ ui/             formatage, unités et coûts, libellés, DOM, filtres, jours de 
 ui/dictee.js    rubrique Dictée (libellés purs + carte)
 ui/incidents.js page Incidents (sélection, filtres, libellés produit des codes)
 ui/messages.js  rubrique Messages (règles des formulaires, dates de Paris, refus de l'Edge)
+ui/retours.js   page Retours (libellés, référence registre, résumés purs)
 vues/           une vue par fichier (enfant.js : fiche, tour.js : trace IA)
 mock/           données factices par action (formes brutes de l'Edge) ;
                 fil.js : mot à mot, photos, devoirs, dictées, traces IA ;
-                console.js : Edge notifs_console factice, avec état
+                console.js : Edge notifs_console factice, avec état ;
+                retours.js : retours parents factices, avec état
 tests/          tests Deno
 ```
