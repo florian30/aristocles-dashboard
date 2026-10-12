@@ -12,6 +12,7 @@ import { enfant, enfants } from './familles.js';
 import { journee } from './journee.js';
 import { photo } from './photo.js';
 import { photos_seance } from './photos_seance.js';
+import { creerRetoursMock } from './retours.js';
 import { sante } from './sante.js';
 import { session } from './session.js';
 import { session_detail } from './session_detail.js';
@@ -32,14 +33,17 @@ function attendre(ms, signal) {
   });
 }
 
-// L'Edge `notifs_console` factice a un état (campagnes, messages) : un
-// par transport, donc par chargement de la page.
-export function transportMock({ estConnecte, estAutorise, delaiMs = 250, console: consoleMock = creerConsoleMock() }) {
+// L'Edge `notifs_console` factice a un état (campagnes, messages), comme
+// les retours parents (statut) : un par transport, donc par chargement.
+export function transportMock({
+  estConnecte, estAutorise, delaiMs = 250, console: consoleMock = creerConsoleMock(), retours: retoursMock = creerRetoursMock(),
+}) {
+  const actions = { ...ACTIONS, ...retoursMock };
   return async (env, action, params = {}, { signal, edge = 'dashboard' } = {}) => {
     await attendre(delaiMs, signal);
     if (!estConnecte(env)) throw new ApiError('Jeton absent ou invalide.', 401);
     if (!estAutorise(env)) throw new ApiError('Compte non autorisé.', 403);
-    const table = edge === 'notifs_console' ? consoleMock : ACTIONS;
+    const table = edge === 'notifs_console' ? consoleMock : actions;
     const handler = Object.hasOwn(table, action) ? table[action] : null;
     if (!handler) throw new ApiError('Action inconnue : ' + action, 400);
     const donnees = handler(params); // un handler peut lever sa propre ApiError

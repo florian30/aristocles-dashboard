@@ -18,6 +18,7 @@ import * as vueEnfant from './vues/enfant.js';
 import * as vueFamilles from './vues/familles.js';
 import * as vueIncidents from './vues/incidents.js';
 import * as vueMessages from './vues/messages.js';
+import * as vueRetours from './vues/retours.js';
 import * as vueSante from './vues/sante.js';
 import * as vueSeance from './vues/seance.js';
 import * as vueSeances from './vues/seances.js';
@@ -42,6 +43,7 @@ const NAVIGATION = [
   { vue: 'sante', libelle: 'Santé & coûts' },
   { vue: 'incidents', libelle: 'Incidents' },
   { vue: 'messages', libelle: 'Messages' },
+  { vue: 'retours', libelle: 'Retours' },
 ];
 
 const racine = document.getElementById('racine');
@@ -60,7 +62,7 @@ let ecranCourant = null; // identité de l'écran affiché (vue + identifiants)
 function vuePour(route) {
   if (route.vue === 'seances') return route.generationId ? vueTour : route.sessionId ? vueSeance : vueSeances;
   if (route.vue === 'familles' && route.childId) return vueEnfant;
-  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents, messages: vueMessages }[route.vue];
+  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents, messages: vueMessages, retours: vueRetours }[route.vue];
 }
 
 // ---------- Rendu d'une route ----------
@@ -99,7 +101,7 @@ async function rendreRoute(route) {
 
   // Même écran (seuls les filtres changent) : on garde le contenu,
   // grisé, le temps du chargement. Sinon : indicateur seul.
-  const identite = [route.env, route.vue, route.sessionId, route.childId, route.generationId].join('|');
+  const identite = [route.env, route.vue, route.sessionId, route.childId, route.generationId, route.retourId].join('|');
   if (identite === ecranCourant && zone.firstChild) {
     zone.classList.add('is-loading');
   } else {
@@ -219,6 +221,7 @@ function afficherCoque(route, session) {
     const a = lien(construireHash({ env: route.env, vue: item.vue }), 'tab' + (actif ? ' is-active' : ''), item.libelle);
     if (actif) a.setAttribute('aria-current', 'page');
     nav.append(a);
+    if (item.vue === 'retours') poserPastilleRetours(a, route.env);
   }
 
   const compte = el('div', 'topbar-account');
@@ -226,6 +229,16 @@ function afficherCoque(route, session) {
 
   entete.replaceChildren(marque, nav, compte);
   return coque.querySelector('.contenu');
+}
+
+// Pastille « N nouveaux » sur l'onglet Retours. La liste passe par le
+// cache (5 min, vidé à chaque changement de statut) ; un échec (Edge
+// pas encore à jour, réseau) n'affiche simplement rien.
+function poserPastilleRetours(onglet, env) {
+  api.retours(env).then((r) => {
+    const n = r.compteurs.nouveau;
+    if (n > 0 && onglet.isConnected) onglet.append(el('span', 'tab-pastille', vueRetours.libelleNouveaux(n)));
+  }).catch(() => {});
 }
 
 // ---------- Démarrage ----------

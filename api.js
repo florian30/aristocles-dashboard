@@ -33,6 +33,13 @@
    sante(env, from, to) → voir adapterSante (Santé & coûts)
    veille(env, jours) → voir adapterVeille (Incidents : familles F1-F8,
      série par jour, lignes de la vue ; `jours` entier 1..92)
+   retours(env, {from?, to?, statut?}) → voir adapterRetours (page Retours ;
+     compteurs sur toute la fenêtre, 92 derniers jours par défaut)
+   retour(env, retourId) → voir adapterRetour ou null, JAMAIS mis en cache
+     (URL signée d'1 h de la capture)
+   retourStatut(env, retourId, statut, refRegistre?) → { id, statut,
+     refRegistre } ; la seule écriture de l'Edge `dashboard`, hors cache,
+     et elle vide le cache de l'env (liste et pastille à jour)
    console.* → Edge `notifs_console` (rubrique Messages), JAMAIS en
      cache : écritures, envois, et des lectures qui doivent être fraîches.
      Formes de l'Edge rendues telles quelles (snake_case), complétées des
@@ -808,6 +815,88 @@ export function adapterApercuNotif(data) {
   };
 }
 
+// ---------- Retours parents (page Retours, contrat § 2.13 à 2.15) ----------
+
+export const STATUTS_RETOUR = ['nouveau', 'lu', 'inscrit', 'clos'];
+const statutRetour = (s) => (STATUTS_RETOUR.includes(s) ? s : 'nouveau');
+
+function adapterResumeRetour(r) {
+  const app = r.app || {};
+  return {
+    id: r.id,
+    creeLe: r.cree_le || null,
+    parentId: r.parent_id || null,
+    parentEmail: r.parent_email || null,
+    enfant: r.enfant ? { childId: r.enfant.child_id || null, prenom: r.enfant.prenom || null, classe: r.enfant.classe || null } : null,
+    categorie: r.categorie || null,
+    ou: r.ou || null,
+    saisie: r.saisie || null,
+    app: { version: app.version || null, build: app.build ?? null, plateforme: app.plateforme || null, env: app.env || null },
+    statut: statutRetour(r.statut),
+    refRegistre: r.ref_registre || null,
+    aCapture: r.a_capture === true,
+    sessionId: r.session_id || null,
+  };
+}
+
+// § 2.13 — liste, les plus récents d'abord ; compteurs sur toute la fenêtre.
+export function adapterRetours(data) {
+  const c = data.compteurs || {};
+  return {
+    from: data.from || null,
+    to: data.to || null,
+    statut: data.statut || null,
+    compteurs: { nouveau: entierOuZero(c.nouveau), lu: entierOuZero(c.lu), inscrit: entierOuZero(c.inscrit), clos: entierOuZero(c.clos) },
+    retours: tableau(data.retours).map((r) => ({ ...adapterResumeRetour(r), extrait: r.extrait || '' })),
+  };
+}
+
+// § 2.14 — détail. La capture garde son état : absente, ok (URL d'1 h)
+// ou purgee ; l'URL n'existe que pour `ok`.
+export function adapterRetour(data) {
+  const r = data.retour || {};
+  const c = data.capture || {};
+  const etat = ['absente', 'ok', 'purgee'].includes(c.etat) ? c.etat : 'absente';
+  return {
+    retour: {
+      ...adapterResumeRetour(r),
+      texte: r.texte ?? '',
+      prisesVoix: r.prises_voix ?? null,
+      lancementId: r.lancement_id || null,
+      clientTs: r.client_ts || null,
+      appareil: r.appareil && typeof r.appareil === 'object' ? r.appareil : null,
+    },
+    seance: data.seance
+      ? { sessionId: data.seance.session_id || null, debut: data.seance.debut || null, mode: data.seance.mode || null, theme: data.seance.theme || null }
+      : null,
+    capture: {
+      etat,
+      url: etat === 'ok' ? c.url || null : null,
+      expireLe: etat === 'ok' ? c.expire_le || null : null,
+      validiteS: nombreOuNull(c.validite_s),
+    },
+    fil: tableau(data.fil).map((e) => ({
+      seq: e.seq ?? null,
+      clientTs: e.client_ts || null,
+      type: e.type_evenement || null,
+      ecran: e.ecran || null,
+      detail: e.detail ?? null,
+      apresRetour: e.apres_retour === true,
+    })),
+    filTronque: data.fil_tronque === true,
+    erreurs7j: tableau(data.erreurs_7j).map((e) => ({
+      clientTs: e.client_ts || null,
+      ecran: e.ecran || null,
+      detail: e.detail ?? null,
+      build: e.app_build ?? null,
+      lancementId: e.lancement_id || null,
+      memeLancement: e.meme_lancement === true,
+    })),
+    erreursTronque: data.erreurs_tronque === true,
+    fiche: typeof data.fiche === 'string' ? data.fiche : '',
+  };
+}
+
 // ---------- Client ----------
 
 export function creerApi({ transport, cache = creerCache() }) {
@@ -892,6 +981,30 @@ export function creerApi({ transport, cache = creerCache() }) {
         if (e.status === 404) return null;
         throw e;
       }
+    },
+    // Liste : en cache (5 min), vidé par retourStatut. Filtre statut optionnel.
+    async retours(env, { from, to, statut } = {}, options) {
+      const params = plageOptionnelle(from, to);
+      if (statut) params.statut = statut;
+      return adapterRetours(await appeler(env, 'retours', params, options));
+    },
+    // Hors cache : la capture est une URL signée d'1 h.
+    async retour(env, retourId, options = {}) {
+      try {
+        return adapterRetour(await transport(env, 'retour', { retour_id: retourId }, options));
+      } catch (e) {
+        if (e.status === 404) return null;
+        throw e;
+      }
+    },
+    // La seule écriture. `refRegistre` undefined → colonne inchangée,
+    // null → effacée. Le cache de l'env est vidé : liste et pastille.
+    async retourStatut(env, retourId, statut, refRegistre, options = {}) {
+      const params = { retour_id: retourId, statut };
+      if (refRegistre !== undefined) params.ref_registre = refRegistre;
+      const r = await transport(env, 'retour_statut', params, options);
+      cache.viderEnv(env);
+      return { id: r.id, statut: statutRetour(r.statut), refRegistre: r.ref_registre || null };
     },
     console: creerConsole(transport),
     viderCache(env) {

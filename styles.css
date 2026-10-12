@@ -222,6 +222,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.55; }
 }
 .tab:hover { color: var(--ink); }
 .tab.is-active { color: var(--ink); border-bottom-color: var(--olive-deep); }
+.tab-pastille { margin-left: 6px; font-size: 11px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: var(--terracotta); color: var(--cream); }
 .topbar-account { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .topbar-email { font-size: 13px; color: var(--ink-soft); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1024,3 +1025,10 @@ span.frise-case { width: 14px; height: 14px; cursor: default; }
   .audience-chiffres { grid-template-columns: 1fr; }
   .messages-lecture { grid-template-columns: 1fr; }
 }
+
+/* ---------- Retours parents (AVIS-3) ---------- */
+.bouton-filtre.is-active { background: var(--sand); color: var(--ink); border-color: var(--ink-soft); }
+.retours-table .table-row.is-nouveau .row-name { font-weight: 700; }
+.retours-table .cell-note { display: block; }
+.retour-actions { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.photo-recharger { height: 28px; padding: 0 10px; font-size: 12px; }
