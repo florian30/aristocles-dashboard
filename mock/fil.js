@@ -178,7 +178,8 @@ export function devoirBrut(s) {
 // Dictée d'une séance (§ 2.5, forme DICT-12), sinon null : la dictée
 // du passage pour une séance en mode 'dictee' (nouveau flux, textes
 // inventés), plus une dictée de l'ancien flux (classe null) hier, sur la
-// première séance du jour.
+// première séance du jour. L'ancien flux ne porte pas les champs v2.6 :
+// leur absence (Edge d'avant) ne doit rien casser.
 export function dicteeBrute(s) {
   if (s.dictee) return dicteeNouveauFlux(s, s.dictee);
   const hier = hierParis();
@@ -222,8 +223,16 @@ function dicteeNouveauFlux(s, d) {
     ecarts_detectes: null,
     created_at: instant(s, 20),
     nb_fautes_comptees: d.fautes.filter(([, comptee]) => comptee).length,
+    nb_fautes_contestees: (d.douteuses || []).filter((f) => f.verdict === 'conteste').length,
     regles_revues: [...new Set(d.fautes.map(([code]) => code))].sort(),
     evenements_par_type: { ...d.ev },
+    // Ajouts v2.6 (DASH-DICTEE-EDGE).
+    titre: d.titre ?? null,
+    refait_de: d.refaitDe ? 'dic-' + SESSIONS.find((x) => x.dictee?.cle === d.refaitDe).id : null,
+    nb_phrases: d.texte ? d.texte.split(/[.!?]+/).filter((p) => p.trim()).length : null,
+    nb_mots: d.texte ? d.texte.split(/\s+/).filter((m) => /[\p{L}\p{N}]/u.test(m)).length : null,
+    liste: d.liste ? { ...d.liste, mots: d.liste.mots.map(([mot, provenance]) => ({ mot, provenance })) } : null,
+    fautes_douteuses: (d.douteuses || []).map((f) => ({ ...f })),
     session_id: s.id,
   };
 }
