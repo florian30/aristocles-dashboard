@@ -383,10 +383,55 @@ export function adapterDictee(d) {
     heure: d.created_at ? heureParis(d.created_at) : null,
     finieAt: d.finie_at || null,
     nbFautes: nombreFini(d.nb_fautes_comptees),
+    nbContestees: nombreFini(d.nb_fautes_contestees),
     reglesRevues: Array.isArray(d.regles_revues) ? d.regles_revues.filter((r) => typeof r === 'string') : null,
     evenements: ev && typeof ev === 'object' && !Array.isArray(ev)
       ? Object.fromEntries(Object.entries(ev).filter(([, n]) => nombreFini(n) != null))
       : null,
+    // DASH-DICTEE-EDGE (v2.6) : absents tant que l'Edge n'est pas à jour.
+    titre: texteOuNull(d.titre),
+    refaitDe: texteOuNull(d.refait_de),
+    nbPhrases: nombreFini(d.nb_phrases),
+    nbMots: nombreFini(d.nb_mots),
+    liste: adapterListeDictee(d),
+    fautesDouteuses: Array.isArray(d.fautes_douteuses)
+      ? d.fautes_douteuses.filter((f) => f && typeof f === 'object').map(adapterFauteDouteuse)
+      : null,
+  };
+}
+
+const texteOuNull = (v) => (typeof v === 'string' && v ? v : null);
+
+// Liste de mots d'une dictée (v2.6). Champ absent (Edge d'avant) → null,
+// rien d'affiché ; `liste: null` → dictée « mots libres » (libre: true).
+function adapterListeDictee(d) {
+  if (!('liste' in d)) return null;
+  const l = d.liste;
+  if (!l || typeof l !== 'object') return { libre: true, nom: null, source: null, provenance: null, mots: [] };
+  return {
+    libre: false,
+    nom: texteOuNull(l.nom),
+    source: texteOuNull(l.source),
+    provenance: texteOuNull(l.provenance),
+    mots: Array.isArray(l.mots)
+      ? l.mots.filter((m) => m && typeof m.mot === 'string').map((m) => ({ mot: m.mot, provenance: texteOuNull(m.provenance) }))
+      : [],
+  };
+}
+
+function adapterFauteDouteuse(f) {
+  return {
+    origine: texteOuNull(f.origine),
+    mot: texteOuNull(f.mot),
+    lectureProbable: texteOuNull(f.lecture_probable),
+    confiance: nombreFini(f.confiance),
+    verdict: texteOuNull(f.verdict),
+    verifiePar: texteOuNull(f.verifie_par),
+    texteTape: texteOuNull(f.texte_tape),
+    regleePar: texteOuNull(f.reglee_par),
+    essais: nombreFini(f.essais),
+    regleCode: texteOuNull(f.regle_code),
+    phraseIndex: nombreFini(f.phrase_index),
   };
 }
 

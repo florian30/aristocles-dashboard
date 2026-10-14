@@ -103,7 +103,9 @@ Deno.test('adaptateur session_detail : dictée d’un écran et tri des interact
   assertEquals(r.ecrans[0].interactions.map((i) => i.position), [1, 2, 3]);
   assertEquals(r.ecrans[1].dictee, { id: 'dic-1', sessionId: null, origine: 'entrainement', texte: 'Le chat dort.', motsCibles: ['chat'], niveau: 'facile', validation: 'valide', tentatives: 1, ecarts: [],
     // Edge sans les champs DICT-12 : tout à null, rien d'inventé.
-    classe: null, etape: null, creeAt: '2026-07-10T17:15:00Z', heure: '19:15', finieAt: null, nbFautes: null, reglesRevues: null, evenements: null });
+    classe: null, etape: null, creeAt: '2026-07-10T17:15:00Z', heure: '19:15', finieAt: null, nbFautes: null, nbContestees: null, reglesRevues: null, evenements: null,
+    // Edge d'avant v2.6 : ni liste, ni mots douteux, ni caractéristiques.
+    titre: null, refaitDe: null, nbPhrases: null, nbMots: null, liste: null, fautesDouteuses: null });
 });
 
 Deno.test('adaptateur tour : avec trace, coût connu', () => {
