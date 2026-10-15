@@ -1,5 +1,5 @@
 /* ============================================================
-   Aristocles — Barre de filtres (plage de dates, enfant)
+   Aristocles — Barre de filtres (plage de dates, enfant, mode)
    Tout l'état vit dans la query du hash : chaque changement
    produit une navigation, un rafraîchissement le conserve.
    ============================================================ */
@@ -9,9 +9,11 @@ import { el, lien } from './dom.js';
 import { aujourdhuiParis, fmtJourCourt } from './paris.js';
 import { RACCOURCIS_PERIODE } from './periode.js';
 import { plageDepuisQuery, RACCOURCIS, sansPlage } from './plage.js';
+import { filtresActifs, queryReinitialisee } from './seances-filtres.js';
 
 // enfants : [{ childId, name }] ou null (pas de sélecteur).
-export function barreFiltres(route, { enfants = null } = {}) {
+// modes : [{ mode, libelle }] ou null (pas de sélecteur).
+export function barreFiltres(route, { enfants = null, modes = null } = {}) {
   const plage = plageDepuisQuery(route.query);
   const barre = el('div', 'toolbar');
 
@@ -41,22 +43,34 @@ export function barreFiltres(route, { enfants = null } = {}) {
   dates.append(champ('from', plage.from, 'Date de début'), el('span', null, '→'), champ('to', plage.to, 'Date de fin'));
   barre.append(dates);
 
-  if (enfants) {
+  // Sélecteur d'une clé de la query ; « tous » = clé retirée.
+  const selecteur = (cle, libelle, tous, options) => {
     const select = el('select');
-    select.setAttribute('aria-label', 'Filtrer par enfant');
-    const tous = el('option', null, 'Tous les enfants');
-    tous.value = '';
-    select.append(tous);
-    for (const e of enfants) {
-      const option = el('option', null, e.name);
-      option.value = e.childId;
+    select.setAttribute('aria-label', libelle);
+    const defaut = el('option', null, tous);
+    defaut.value = '';
+    select.append(defaut);
+    for (const o of options) {
+      const option = el('option', null, o.libelle);
+      option.value = o.valeur;
       select.append(option);
     }
-    select.value = route.query.child || '';
+    select.value = route.query[cle] || '';
     select.addEventListener('change', () => {
-      naviguer({ ...route, query: { ...route.query, child: select.value || null } });
+      naviguer({ ...route, query: { ...route.query, [cle]: select.value || null } });
     });
-    barre.append(select);
+    return select;
+  };
+  if (enfants) {
+    barre.append(selecteur('child', 'Filtrer par enfant', 'Tous les enfants',
+      enfants.map((e) => ({ valeur: e.childId, libelle: e.name }))));
+  }
+  if (modes) {
+    barre.append(selecteur('mode', 'Filtrer par mode', 'Tous les modes',
+      modes.map((m) => ({ valeur: m.mode, libelle: m.libelle }))));
+  }
+  if (filtresActifs(route.query)) {
+    barre.append(lien(construireHash({ ...route, query: queryReinitialisee(route.query) }), 'toolbar-reset', 'Réinitialiser'));
   }
   return barre;
 }

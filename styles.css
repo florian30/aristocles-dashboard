@@ -294,6 +294,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.55; }
   color: var(--ink);
 }
 .toolbar select { cursor: pointer; }
+.toolbar-reset { font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+.toolbar-reset:hover { color: var(--ink); }
 
 /* ---- Indicateurs ---- */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
