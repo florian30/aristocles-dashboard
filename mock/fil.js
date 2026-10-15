@@ -65,6 +65,11 @@ const FILS = {
       [156, 'message_tuteur', "Bravo : « écrites », avec -es, parce que « les lettres » est au féminin pluriel."],
       [160, 'exercice_resolu', null, { meta: { exercise_id: 'xr-201', resultat: 'succes' } }],
       [170, 'pouce_haut_bas', null, { meta: { valeur: 'haut' } }],
+      // Retour sur l'écran 2 après l'écran 3 (aller-retour en Devoirs) :
+      // le fil de la séance doit rester dans l'ordre de l'heure.
+      [252, 'message_tuteur', "Revenons une seconde à la première phrase : pourquoi « écrites » prend-il un -s ?"],
+      [255, 'message_enfant_vocal', "parce que les lettres c'est plusieurs"],
+      [258, 'message_tuteur', "Oui : féminin pluriel, donc -es."],
     ],
     3: [
       [200, 'exercice_presente', "Complète en accordant le participe passé si nécessaire : « Elles ont (manger) … une pomme. »", { meta: { exercise_id: 'xr-202', matiere: 'français', confiance: 'haute' } }],

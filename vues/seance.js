@@ -1,11 +1,13 @@
 /* ============================================================
    Relecture de séance (action `session_detail`) : bilan, devoir et
-   consignes vues par l'enfant, puis par écran (dans l'ordre de leur
-   1re activité, tel que reçu) le fil tour par tour (enfant / Ari /
-   système), avec lien vers la trace IA de chaque réplique d'Ari et
-   miniatures des photos (`photos_seance`, chargé après le rendu ;
-   à défaut, bouton de téléchargement) ; dictée de l'écran,
-   chronologie technique repliée, acquisitions.
+   consignes vues par l'enfant, les écrans (dans l'ordre de leur
+   1re activité, tel que reçu : synthèse, exercices, dictée), puis le
+   mot à mot en un seul fil dans l'ordre de l'heure (enfant / Ari /
+   système, intertitre à chaque changement d'écran — ui/fil-seance.js),
+   avec lien vers la trace IA de chaque réplique d'Ari et miniatures
+   des photos (`photos_seance`, chargé après le rendu ; à défaut,
+   bouton de téléchargement) ; chronologie technique repliée,
+   acquisitions.
    Le mot à mot et les sorties IA sont du contenu non fiable :
    toujours en textContent.
    ============================================================ */
@@ -13,6 +15,7 @@
 import { construireHash } from '../router.js';
 import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
 import { carteDictee } from '../ui/dictee.js';
+import { filChronologique } from '../ui/fil-seance.js';
 import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { estAnnulation } from '../api.js';
 import { fmtDuree, fmtDureeSec, fmtHorodatagePrecis, fmtJour, fmtJourHeure, pluriel } from '../ui/format.js';
@@ -73,10 +76,12 @@ export async function rendre({ route, api, signal }) {
   const photos = { parInteraction: new Map(), parEcran: new Map(), tete: el('div', 'photos-seance') };
   corps.append(photos.tete);
 
-  corps.append(el('h2', 'section-title', 'Fil de la séance'));
+  corps.append(el('h2', 'section-title', 'Écrans'));
   if (seance.ecrans.length === 0) corps.append(el('p', 'reader-empty', 'Aucun écran pour cette séance.'));
   const contexte = { route, api, prenom: seance.childName, photos };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
+  corps.append(el('h2', 'section-title', 'Mot à mot'));
+  corps.append(filSeance(seance.ecrans, contexte));
   chargerPhotos(seance, contexte, signal);
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
@@ -123,11 +128,12 @@ function carteConsignes(consignes) {
   return carte;
 }
 
+const nomEcran = (ecran) => 'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
+
 function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
   const tete = el('div', 'ecran-head');
-  const titreEcran = el('span', 'ecran-title',
-    'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type));
+  const titreEcran = el('span', 'ecran-title', nomEcran(ecran));
   if (ecran.premiereActiviteAt) titreEcran.append(el('span', 'ecran-activite', ' · 1re activité ' + heureParis(ecran.premiereActiviteAt)));
   tete.append(titreEcran);
   const drapeaux = el('div', 'ecran-flags');
@@ -146,23 +152,31 @@ function carteEcran(ecran, contexte) {
   const photosEcran = el('div', 'photos-ecran');
   contexte.photos.parEcran.set(ecran.id, photosEcran);
   contenu.append(photosEcran);
-  contenu.append(filEcran(ecran, contexte));
+  contenu.append(el('p', 'cell-note', ecran.interactions.length
+    ? pluriel(ecran.interactions.length, 'tour') + ' dans le mot à mot'
+    : 'Pas de mot à mot enregistré pour cet écran.'));
   carte.append(tete, contenu);
   return carte;
 }
 
 // ---------- Fil tour par tour ----------
 
-function filEcran(ecran, { route, prenom, photos }) {
-  const bloc = el('div', 'fil-ecran');
-  bloc.append(el('span', 'eyebrow', 'Mot à mot'));
-  if (!ecran.interactions.length) {
-    bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cet écran.'));
+// Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
+// chaque changement d'écran (« de retour » s'il a déjà paru).
+function filSeance(ecrans, { route, prenom, photos }) {
+  const bloc = el('section', 'fil-seance');
+  const elements = filChronologique(ecrans);
+  if (!elements.length) {
+    bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cette séance.'));
     return bloc;
   }
   const fil = el('ol', 'bulles');
-  for (const i of ecran.interactions) {
-    if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, prenom, photos }));
+  for (const { ecran, interaction: i, retour } of elements) {
+    if (!i) {
+      const intertitre = el('li', 'fil-intertitre');
+      intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(ecran) + (retour ? ' · de retour' : '')));
+      fil.append(intertitre);
+    } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, prenom, photos }));
     else fil.append(ligneSysteme(i));
   }
   bloc.append(fil);

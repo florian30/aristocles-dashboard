@@ -747,7 +747,14 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .fil-systeme .bulle-heure { margin: 0; padding: 0; }
 .fil-systeme-texte { font-style: italic; color: var(--ink); }
 .fil-systeme-meta { font-size: 11px; color: var(--ink-placeholder); }
-.fil-ecran { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.fil-seance { border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; }
+/* Changement d'écran dans le fil : repère léger, pas une carte. */
+.fil-intertitre {
+  display: flex; align-items: center; gap: 10px; margin: 10px 0 2px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-placeholder);
+}
+.fil-intertitre:first-child { margin-top: 0; }
+.fil-intertitre::after { content: ''; flex: 1; border-top: 1px dashed var(--border); }
 .devoir-card { border: 1px solid var(--border); border-radius: 16px; padding: 12px 20px; display: flex; flex-direction: column; gap: 2px; }
 .devoir-card p { margin: 0; }
 .dictee-bloc .json-bloc { margin-top: 4px; }
