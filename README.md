@@ -79,6 +79,7 @@ ui/dictee.js    rubrique Dictée (libellés purs + carte)
 ui/incidents.js page Incidents (sélection, filtres, libellés produit des codes)
 ui/messages.js  rubrique Messages (règles des formulaires, dates de Paris, refus de l'Edge)
 ui/retours.js   page Retours (libellés, référence registre, résumés purs)
+ui/quiz.js      quiz de leçon en Devoirs (questions, verdicts, carte « Un petit quiz ? », résumé)
 vues/           une vue par fichier (enfant.js : fiche, tour.js : trace IA)
 mock/           données factices par action (formes brutes de l'Edge) ;
                 fil.js : mot à mot, photos, devoirs, dictées, traces IA ;

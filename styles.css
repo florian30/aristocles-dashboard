@@ -441,6 +441,7 @@ a.table-row:hover { background: var(--surface-raised); }
 .ecran-flags { display: flex; align-items: center; gap: 10px; }
 .ecran-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
 .ecran-synthese { margin: 0; font-size: 14.5px; line-height: 1.55; }
+.ecran-quiz { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 
 .chip {
   font-size: 11.5px;
@@ -734,6 +735,7 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .bulle.is-enfant, .bulle.is-parent { align-self: flex-end; background: var(--field-bg); border-color: var(--border); border-bottom-right-radius: 4px; }
 .bulle-qui { display: flex; align-items: baseline; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .bulle-type { font-weight: 400; }
+.bulle-quiz { margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--field-bg); border: 1px solid var(--border); font-size: 11px; font-weight: 600; }
 .bulle-heure { margin-left: auto; padding-left: 10px; font-size: 11.5px; font-weight: 400; color: var(--ink-placeholder); font-variant-numeric: tabular-nums; }
 .bulle-texte { margin: 2px 0 0; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .bulle-texte.is-empty { color: var(--ink-placeholder); font-style: italic; }
@@ -747,6 +749,7 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .fil-systeme .bulle-heure { margin: 0; padding: 0; }
 .fil-systeme-texte { font-style: italic; color: var(--ink); }
 .fil-systeme-meta { font-size: 11px; color: var(--ink-placeholder); }
+.fil-systeme.is-quiz { color: var(--ink); font-weight: 500; }
 .fil-seance { border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; }
 /* Changement d'écran dans le fil : repère léger, pas une carte. */
 .fil-intertitre {

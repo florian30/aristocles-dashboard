@@ -43,5 +43,6 @@ Deno.test('fil : mock Devoirs (ses-03) — heures croissantes, retour sur l’é
   assertEquals(heures, [...heures].sort());
   assertEquals(heures.length, seance.ecrans.reduce((n, e) => n + e.interactions.length, 0));
   const intertitres = fil.filter((x) => !x.interaction).map((x) => x.ecran.position + (x.retour ? '↩' : ''));
-  assertEquals(intertitres, ['1', '5', '6', '2', '3', '2↩', '6↩', '4']);
+  // 5↩ : le quiz de leçon (DASH-QUIZ) suit la dernière consigne.
+  assertEquals(intertitres, ['1', '5', '6', '2', '3', '2↩', '6↩', '5↩', '4']);
 });
