@@ -11,6 +11,7 @@ import { el, tableau } from '../ui/dom.js';
 import { fmtDuree, fmtJourHeure, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE } from '../ui/libelles.js';
 import { plageDepuisQuery } from '../ui/plage.js';
+import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { avecSansEchange, bandeauSansEchange } from '../ui/sans-echange.js';
 import { filtrerParMode, modeDepuisQuery, optionsEnfants, optionsModes } from '../ui/seances-filtres.js';
 
@@ -20,7 +21,7 @@ export async function rendre({ route, api, signal }) {
   const plage = plageDepuisQuery(route.query);
   const child = route.query.child || null;
   const mode = modeDepuisQuery(route.query);
-  const options = { signal, avecSansEchange: avecSansEchange(route) };
+  const options = { signal, avecSansEchange: avecSansEchange(route), avecInternes: avecInternes(route) };
   // Enfant choisi : la plage tous enfants (souvent en cache) donne les
   // enfants proposés ; sinon un seul appel suffit.
   const [{ seances: seancesEnfant, sansEchange }, tousEnfants] = await Promise.all([
@@ -32,10 +33,12 @@ export async function rendre({ route, api, signal }) {
   const vue = el('div', 'vue vue-seances');
   const tete = el('div', 'page-head');
   tete.append(el('h1', 'page-title', titre), el('span', 'page-count', pluriel(seances.length, 'séance')));
-  vue.append(tete, barreFiltres(route, {
+  const barre = barreFiltres(route, {
     enfants: optionsEnfants((tousEnfants || { seances: seancesEnfant }).seances, child),
     modes: optionsModes(seancesEnfant, mode),
-  }));
+  });
+  barre.append(interrupteurInternes(route));
+  vue.append(tete, barre);
   const bandeau = bandeauSansEchange(route, sansEchange);
   if (bandeau) vue.append(bandeau);
 

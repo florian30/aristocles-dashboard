@@ -29,6 +29,7 @@ import { fmtInstantParis, fmtJourCourt, jourParis } from '../ui/paris.js';
 import { periodeDepuisQuery } from '../ui/periode.js';
 import { estAnnulation } from '../api.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 import { etoiles } from './familles.js';
 
@@ -36,18 +37,25 @@ export const titre = 'Fiche enfant';
 
 export async function rendre({ route, api, signal }) {
   const periode = periodeDepuisQuery(route.query, new Date(), { defaut: '92j' });
-  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, { signal, avecSansEchange: avecSansEchange(route) });
+  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, {
+    signal, avecSansEchange: avecSansEchange(route), avecInternes: avecInternes(route),
+  });
 
   const vue = el('div', 'vue vue-familles vue-enfant');
   vue.append(lien(construireHash({ env: route.env, vue: 'familles' }), 'reader-back', '← Retour aux familles'));
   if (!fiche) {
-    vue.append(etatErreur('Enfant introuvable', 'Aucun enfant « ' + route.childId + ' » sur ' + route.env + '.'));
+    // Un enfant d'un compte de test interne est écarté tant que l'interrupteur est coupé.
+    vue.append(etatErreur('Enfant introuvable', 'Aucun enfant « ' + route.childId + ' » sur ' + route.env +
+      (avecInternes(route) ? '.' : ' parmi les comptes affichés — s’il s’agit d’un compte de test interne, activez l’interrupteur.'),
+    avecInternes(route) ? [] : [interrupteurInternes(route)]));
     return vue;
   }
   const { identite: id } = fiche;
   document.title = id.prenom + ' · ' + route.env + ' · Aristocles';
 
-  vue.append(entete(fiche), barrePeriode(route, periode));
+  const barre = barrePeriode(route, periode);
+  barre.append(interrupteurInternes(route));
+  vue.append(entete(fiche), barre);
 
   const env = route.env;
   const seances = section('Séances', fiche.seances.length, tableSeances(fiche.seances, env));

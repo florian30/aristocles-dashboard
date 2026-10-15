@@ -18,6 +18,10 @@
      et enfant les écartent sauf options.avecSansEchange (→ param
      `avec_sans_echange: true`) ; `sansEchange` est leur nombre dans la
      plage, null si l'Edge de l'environnement ne le renvoie pas encore.
+   Comptes de test internes (lot DASH-TRIS-INTERNES) : session, journee,
+     apercu, sante, enfants et enfant reçoivent `avec_internes: true` si
+     options.avecInternes ; sinon rien n'est posé (une Edge d'avant le
+     paramètre l'ignore, celle d'après écarte les internes par défaut).
    detail(env, sessionId) → { …, resume, homework, consignes[], ecrans[]
      (avec interactions[], dictee, premiereActiviteAt ; dans l'ordre reçu,
      l'Edge les trie par 1re activité), acquisitions[], evenements[] } ou null
@@ -916,18 +920,22 @@ export function creerApi({ transport, cache = creerCache() }) {
   // Plage optionnelle (jours civils de Paris) : les deux bornes ou aucune.
   const plageOptionnelle = (from, to) => (from && to ? bornesParis(from, to) : {});
 
-  // options.avecSansEchange → param `avec_sans_echange: true` (posé
-  // seulement s'il est vrai : la clé de cache reste celle d'avant sinon).
-  const sansEchange = (params, options = {}) => {
-    const { avecSansEchange, ...reste } = options;
-    return [avecSansEchange === true ? { ...params, avec_sans_echange: true } : params, reste];
+  // options.avecSansEchange → param `avec_sans_echange: true`,
+  // options.avecInternes → param `avec_internes: true` (posés seulement
+  // s'ils sont vrais : la clé de cache reste celle d'avant sinon).
+  const usage = (params, options = {}) => {
+    const { avecSansEchange, avecInternes, ...reste } = options;
+    const p = { ...params };
+    if (avecSansEchange === true) p.avec_sans_echange = true;
+    if (avecInternes === true) p.avec_internes = true;
+    return [p, reste];
   };
 
   return {
     async sessions(env, from, to, childId, options) {
       const params = paramsPlage(from, to);
       if (childId && childId !== 'all') params.child_id = childId;
-      return adapterSessions(await appeler(env, 'session', ...sansEchange(params, options)));
+      return adapterSessions(await appeler(env, 'session', ...usage(params, options)));
     },
     async detail(env, sessionId, options) {
       try {
@@ -938,23 +946,23 @@ export function creerApi({ transport, cache = creerCache() }) {
       }
     },
     async journee(env, date, options) {
-      return adapterJournee(await appeler(env, 'journee', ...sansEchange({ date }, options)));
+      return adapterJournee(await appeler(env, 'journee', ...usage({ date }, options)));
     },
     async apercu(env, from, to, options) {
-      return adapterApercu(await appeler(env, 'apercu', ...sansEchange(bornesParis(from, to), options)));
+      return adapterApercu(await appeler(env, 'apercu', ...usage(bornesParis(from, to), options)));
     },
     async sante(env, from, to, options) {
-      return adapterSante(await appeler(env, 'sante', bornesParis(from, to), options));
+      return adapterSante(await appeler(env, 'sante', ...usage(bornesParis(from, to), options)));
     },
     async veille(env, jours, options) {
       return adapterVeille(await appeler(env, 'veille', { jours }, options));
     },
     async enfants(env, from, to, options) {
-      return adapterEnfants(await appeler(env, 'enfants', ...sansEchange(plageOptionnelle(from, to), options)));
+      return adapterEnfants(await appeler(env, 'enfants', ...usage(plageOptionnelle(from, to), options)));
     },
     async enfant(env, childId, from, to, options) {
       try {
-        return adapterEnfant(await appeler(env, 'enfant', ...sansEchange({ child_id: childId, ...plageOptionnelle(from, to) }, options)));
+        return adapterEnfant(await appeler(env, 'enfant', ...usage({ child_id: childId, ...plageOptionnelle(from, to) }, options)));
       } catch (e) {
         if (e.status === 404) return null;
         throw e;

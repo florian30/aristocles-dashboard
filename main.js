@@ -11,6 +11,7 @@ import { estModeMock } from './config.js';
 import { transportMock } from './mock/transport.js';
 import { construireHash, ecouterHash, naviguer } from './router.js';
 import { el, etatChargement, etatErreur, lien } from './ui/dom.js';
+import { etatInternes, queryDeSection } from './ui/internes.js';
 import { hierParis } from './ui/paris.js';
 import * as vueApercu from './vues/apercu.js';
 import * as vueConnexion from './vues/connexion.js';
@@ -58,6 +59,7 @@ function placerBandeaux() {
 let controleur = null;
 let numeroRendu = 0;
 let ecranCourant = null; // identité de l'écran affiché (vue + identifiants)
+let internesActif = false; // interrupteur « Comptes de test internes » (ui/internes.js)
 
 function vuePour(route) {
   if (route.vue === 'seances') return route.generationId ? vueTour : route.sessionId ? vueSeance : vueSeances;
@@ -75,6 +77,14 @@ async function rendreRoute(route) {
   }
   if (!route.canonique) {
     naviguer(route, { remplacer: true });
+    return;
+  }
+  // L'interrupteur suit toute la navigation : une route sans `internes`
+  // le reçoit tant qu'il est activé ; `internes=0` le coupe.
+  const internes = etatInternes(route, internesActif);
+  internesActif = internes.actif;
+  if (internes.reecrire) {
+    naviguer(internes.reecrire, { remplacer: true });
     return;
   }
 
@@ -218,7 +228,7 @@ function afficherCoque(route, session) {
   nav.setAttribute('aria-label', 'Sections');
   for (const item of NAVIGATION) {
     const actif = item.vue === route.vue;
-    const a = lien(construireHash({ env: route.env, vue: item.vue }), 'tab' + (actif ? ' is-active' : ''), item.libelle);
+    const a = lien(construireHash({ env: route.env, vue: item.vue, query: queryDeSection(internesActif) }), 'tab' + (actif ? ' is-active' : ''), item.libelle);
     if (actif) a.setAttribute('aria-current', 'page');
     nav.append(a);
     if (item.vue === 'retours') poserPastilleRetours(a, route.env);

@@ -7,6 +7,7 @@
    ============================================================ */
 
 import { barrePeriode } from '../ui/filtres.js';
+import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { carteCout, nomRole, celluleCout } from '../ui/blocs.js';
 import { partDictee } from '../ui/dictee.js';
 import { carteKpi, el, tableau } from '../ui/dom.js';
@@ -21,12 +22,14 @@ export const titre = "Vue d'ensemble";
 
 export async function rendre({ route, api, signal }) {
   const periode = periodeDepuisQuery(route.query);
-  const a = await api.apercu(route.env, periode.from, periode.to, { signal });
+  const a = await api.apercu(route.env, periode.from, periode.to, { signal, avecInternes: avecInternes(route) });
 
   const vue = el('div', 'vue vue-apercu');
   const tete = el('div', 'page-head');
   tete.append(el('h1', 'page-title', titre), el('span', 'page-count', 'du ' + fmtJourCourt(periode.from) + ' au ' + fmtJourCourt(periode.to) + ' · ' + periode.jours + ' jours'));
-  vue.append(tete, barrePeriode(route, periode));
+  const barre = barrePeriode(route, periode);
+  barre.append(interrupteurInternes(route));
+  vue.append(tete, barre);
 
   const kpis = el('div', 'kpi-grid kpi-grid-jour');
   kpis.append(
