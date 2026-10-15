@@ -1,6 +1,7 @@
 /* ============================================================
-   Séances — liste (action `session`), filtrable par plage et
-   par enfant. Chaque ligne ouvre le lecteur (vues/seance.js).
+   Séances — liste (action `session`), filtrable par plage, par
+   enfant (côté Edge) et par mode (ici). Chaque ligne ouvre le
+   lecteur (vues/seance.js).
    Les séances sans échange sont masquées sauf `sans_echange=1`.
    ============================================================ */
 
@@ -11,22 +12,29 @@ import { fmtDuree, fmtJourHeure, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE } from '../ui/libelles.js';
 import { plageDepuisQuery } from '../ui/plage.js';
 import { avecSansEchange, bandeauSansEchange } from '../ui/sans-echange.js';
+import { filtrerParMode, modeDepuisQuery, optionsEnfants, optionsModes } from '../ui/seances-filtres.js';
 
 export const titre = 'Séances';
 
 export async function rendre({ route, api, signal }) {
   const plage = plageDepuisQuery(route.query);
-  const [{ seances, sansEchange }, { enfants }] = await Promise.all([
-    api.sessions(route.env, plage.from, plage.to, route.query.child, { signal, avecSansEchange: avecSansEchange(route) }),
-    api.enfants(route.env, null, null, { signal }), // liste des enfants inscrits
+  const child = route.query.child || null;
+  const mode = modeDepuisQuery(route.query);
+  const options = { signal, avecSansEchange: avecSansEchange(route) };
+  // Enfant choisi : la plage tous enfants (souvent en cache) donne les
+  // enfants proposés ; sinon un seul appel suffit.
+  const [{ seances: seancesEnfant, sansEchange }, tousEnfants] = await Promise.all([
+    api.sessions(route.env, plage.from, plage.to, child, options),
+    child ? api.sessions(route.env, plage.from, plage.to, null, options) : null,
   ]);
+  const seances = filtrerParMode(seancesEnfant, mode);
 
   const vue = el('div', 'vue vue-seances');
   const tete = el('div', 'page-head');
   tete.append(el('h1', 'page-title', titre), el('span', 'page-count', pluriel(seances.length, 'séance')));
   vue.append(tete, barreFiltres(route, {
-    enfants: enfants.map((e) => ({ childId: e.childId, name: e.prenom }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+    enfants: optionsEnfants((tousEnfants || { seances: seancesEnfant }).seances, child),
+    modes: optionsModes(seancesEnfant, mode),
   }));
   const bandeau = bandeauSansEchange(route, sansEchange);
   if (bandeau) vue.append(bandeau);
@@ -56,7 +64,7 @@ export async function rendre({ route, api, signal }) {
         ],
       };
     }),
-    vide: 'Aucune séance sur cette période.',
+    vide: child || mode ? 'Aucune séance ne correspond à ces filtres.' : 'Aucune séance sur cette période.',
   }));
   return vue;
 }
