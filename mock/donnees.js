@@ -18,6 +18,9 @@ export const CHILDREN = [
   { id: 'c6', name: 'Sacha', classe: 'CM1' },
   { id: 'c7', name: 'Léon', classe: 'CM1' },
   { id: 'c8', name: 'Jules', classe: 'CE2' }, // inscrit, jamais venu
+  // Compte de test interne (parent `compte_interne`) : écarté par l'Edge
+  // sauf `avec_internes: true` (lot DASH-TRIS-INTERNES, mock/outils.js).
+  { id: 'c9', name: 'Camille', classe: 'CM2', interne: true },
 ];
 
 // Scénarios de séance : thème, notion principale, bilan rédigé et
@@ -275,6 +278,10 @@ const SESSION_SEEDS = [
   [1,  '16:40', 'c2', 'devoirs',       0, 6],
   [0,  '07:55', 'c4', 'entrainement',  0, 6],
   [5,  '12:10', 'c4', 'entrainement',  0, 6],
+  // Compte de test interne (c9) : masqué par défaut.
+  [0,  '09:15', 'c9', 'entrainement',  8, 2],
+  [1,  '14:00', 'c9', 'entrainement', 11, 0],
+  [3,  '15:30', 'c9', 'devoirs',       9, 1],
 ];
 
 export const isoDaysAgo = (n) => isoJoursAvant(n);

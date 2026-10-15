@@ -19,6 +19,7 @@ import { champsLibres, lienSeance } from '../ui/blocs.js';
 import { boutonCopier, el, etatErreur, lien, tableau } from '../ui/dom.js';
 import { pluriel } from '../ui/format.js';
 import { LIBELLE_MODE, LIBELLE_PLATEFORME } from '../ui/libelles.js';
+import { avecInternes, interrupteurInternes, queryDeSection } from '../ui/internes.js';
 import { fmtInstantParis } from '../ui/paris.js';
 import {
   auteurRetour,
@@ -49,7 +50,7 @@ const libelle = (table, v, defaut = '—') => (v ? table[v] || v : defaut);
 
 async function rendreListe({ route, api, signal }) {
   const statut = statutDepuisQuery(route.query);
-  const l = await api.retours(route.env, { statut }, { signal });
+  const l = await api.retours(route.env, { statut }, { signal, avecInternes: avecInternes(route) });
 
   const vue = el('div', 'vue vue-retours');
   const tete = el('div', 'page-head');
@@ -62,13 +63,15 @@ async function rendreListe({ route, api, signal }) {
   const filtres = el('div', 'chips-ligne');
   filtres.append(el('span', 'eyebrow', 'Statut'));
   const bouton = (valeur, texte) => {
-    const a = lien(construireHash({ env: route.env, vue: 'retours', query: valeur ? { statut: valeur } : {} }),
+    const query = { ...queryDeSection(avecInternes(route)), ...(valeur ? { statut: valeur } : {}) };
+    const a = lien(construireHash({ env: route.env, vue: 'retours', query }),
       'bouton bouton-filtre' + (valeur === statut ? ' is-active' : ''), texte);
     if (valeur === statut) a.setAttribute('aria-current', 'true');
     return a;
   };
   filtres.append(bouton(null, 'Tous (' + total + ')'));
   for (const s of Object.keys(LIBELLE_STATUT_RETOUR)) filtres.append(bouton(s, LIBELLE_STATUT_RETOUR[s] + ' (' + l.compteurs[s] + ')'));
+  filtres.append(interrupteurInternes(route));
   vue.append(filtres);
 
   vue.append(tableau({

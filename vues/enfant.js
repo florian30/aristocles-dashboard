@@ -79,6 +79,8 @@ function entete(fiche) {
   nom.append(el('h1', 'page-title', id.prenom));
   if (id.classe) nom.append(el('span', 'chip is-muted', id.classe));
   if (id.genre) nom.append(el('span', 'chip is-muted', LIBELLE_GENRE[id.genre] || id.genre));
+  // La fiche s'ouvre toujours par son id, interne ou non (contrat v2.8 § 1.10).
+  if (id.compteInterne) nom.append(el('span', 'chip is-muted chip-interne', 'Compte de test interne'));
   nom.append(etoiles(fiche.notionsAcquises));
 
   const parent = el('div', 'fiche-parent');

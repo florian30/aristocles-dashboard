@@ -9,7 +9,7 @@
 
 import { CHILDREN, SESSIONS } from './donnees.js';
 import { devoirBrut, dicteeBrute } from './fil.js';
-import { ecarteSansEchange } from './outils.js';
+import { ecarteInternes, ecarteSansEchange } from './outils.js';
 import { aujourdhuiParis, debutJourParisMs, decalerJour, ecartJours, jourParis } from '../ui/paris.js';
 
 const enfantParId = Object.fromEntries(CHILDREN.map((c) => [c.id, c]));
@@ -98,15 +98,15 @@ const TYPES_INCIDENT = ['tour_erreur', 'tour_anomalie', 'filet_echec_llm', 'ecri
 
 export function journeeBrute(date, params = {}) {
   const ja = joursAvant(date);
-  const { seances: seancesDuJour, nb: nbSansEchange } = ecarteSansEchange(SESSIONS
+  const { seances: seancesDuJour, nb: nbSansEchange } = ecarteSansEchange(ecarteInternes(SESSIONS
     .map((s, i) => ({ s, i }))
-    .filter(({ s }) => jourParis(s.startedAt) === date), params, (x) => x.s);
+    .filter(({ s }) => jourParis(s.startedAt) === date), params, (x) => x.s.childId), params, (x) => x.s);
 
-  const ids = new Set([
+  const ids = new Set(ecarteInternes([
     ...seancesDuJour.map(({ s }) => s.childId),
     ...USAGE_SEUL.filter(([j]) => j === ja).map(([, c]) => c),
     ...ERREURS.filter(([j]) => j === ja).map(([, c]) => c),
-  ]);
+  ], params, (c) => c));
 
   const enfants = [...ids].map((childId) => {
     const c = enfantParId[childId];

@@ -9,7 +9,7 @@ import { aujourdhuiParis, debutJourParisMs, decalerJour, jourParis } from '../ui
 import { ACQUISITIONS, CHILDREN, SESSIONS } from './donnees.js';
 import { devoirBrut, dicteeBrute, photosSeance } from './fil.js';
 import { resumeSeance } from './journee.js';
-import { dansPlage, ecarteSansEchange } from './outils.js';
+import { dansPlage, ecarteInternes, ecarteSansEchange, estInterne } from './outils.js';
 
 // childId → [genre, créé il y a N jours, parent_id, e-mail parent]
 const FAMILLES = {
@@ -21,6 +21,7 @@ const FAMILLES = {
   c6: ['non_precise', 20, 'p-0005', null], // compte parent introuvable
   c7: ['garcon', 12, 'p-0006', 'leon.dupuis@example.org'],
   c8: ['garcon', 5, 'p-0007', 'jules.martin@example.org'],
+  c9: ['fille', 8, 'p-0008', 'equipe.test@example.org'], // compte de test interne
 };
 
 const ACQUISES = ['acquise', 'parfaitement_acquise'];
@@ -51,11 +52,12 @@ const nbSansEchange = (childId, params) => ecarteSansEchange(toutesSeancesDe(chi
 const nbAcquises = (childId) => (ACQUISITIONS[childId] || []).filter((a) => ACQUISES.includes(a.maitrise)).length;
 
 export function enfants(params = {}) {
+  const visibles = ecarteInternes(CHILDREN, params, (c) => c.id);
   return {
     from: params.from || null,
     to: params.to || null,
-    seances_sans_echange: CHILDREN.reduce((a, c) => a + nbSansEchange(c.id, params), 0),
-    enfants: CHILDREN.map((c) => {
+    seances_sans_echange: visibles.reduce((a, c) => a + nbSansEchange(c.id, params), 0),
+    enfants: visibles.map((c) => {
       const miennes = seancesDe(c.id, params);
       return {
         ...identite(c),
@@ -146,7 +148,7 @@ function memoire(c, miennes) {
 
 export function enfant(params = {}) {
   const c = CHILDREN.find((x) => x.id === params.child_id);
-  if (!c) return undefined;
+  if (!c) return undefined; // une fiche s'ouvre par son id, interne ou non (§ 1.10)
   const miennes = seancesDe(c.id, params);
   const derniere = miennes[0]?.s.startedAt || null;
   const bilansEnfant = bilans(c, miennes);
@@ -161,7 +163,7 @@ export function enfant(params = {}) {
   return {
     from: params.from || null,
     to: params.to || null,
-    identite: identite(c),
+    identite: { ...identite(c), compte_interne: estInterne(c.id) }, // § 1.10 : fiche seule
     seances_sans_echange: nbSansEchange(c.id, params),
     seances: miennes.map(({ s, i }) => resumeSeance(s, i)),
     maitrise,

@@ -1,11 +1,11 @@
 /* Mock de l'action `session` (liste) — forme brute de l'Edge. */
 
 import { CHILDREN, SESSIONS } from './donnees.js';
-import { dansPlage, ecarteSansEchange, nbExercices } from './outils.js';
+import { dansPlage, ecarteInternes, ecarteSansEchange, nbExercices } from './outils.js';
 
 export function session(params) {
   const prenom = Object.fromEntries(CHILDREN.map((c) => [c.id, c.name]));
-  const { seances, nb } = ecarteSansEchange(SESSIONS
+  const { seances, nb } = ecarteSansEchange(ecarteInternes(SESSIONS, params)
     .filter((s) => dansPlage(s, params))
     .filter((s) => !params.child_id || s.childId === params.child_id), params);
   // La forme v1 de `sessions[]` n'a pas de champ sans_echange (§ 1.9).

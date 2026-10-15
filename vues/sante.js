@@ -6,6 +6,7 @@
    ============================================================ */
 
 import { barrePeriode } from '../ui/filtres.js';
+import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { blocIncidents, carteCout, listeErreursClient, tableEchecsIa, tableIa, tableVersions } from '../ui/blocs.js';
 import { carteKpi, el, tableau } from '../ui/dom.js';
 import { fmtEntier } from '../ui/format.js';
@@ -17,12 +18,14 @@ export const titre = 'Santé & coûts';
 
 export async function rendre({ route, api, signal }) {
   const periode = periodeDepuisQuery(route.query);
-  const s = await api.sante(route.env, periode.from, periode.to, { signal });
+  const s = await api.sante(route.env, periode.from, periode.to, { signal, avecInternes: avecInternes(route) });
 
   const vue = el('div', 'vue vue-sante');
   const tete = el('div', 'page-head');
   tete.append(el('h1', 'page-title', titre), el('span', 'page-count', 'du ' + fmtJourCourt(periode.from) + ' au ' + fmtJourCourt(periode.to) + ' · ' + periode.jours + ' jours'));
-  vue.append(tete, barrePeriode(route, periode));
+  const barre = barrePeriode(route, periode);
+  barre.append(interrupteurInternes(route));
+  vue.append(tete, barre);
 
   const erreurs = totalErreurs(s.erreursClient);
   const incidents = totalIncidents(s.incidents);
