@@ -82,6 +82,14 @@ const FILS = {
     ],
     5: [
       [72, 'exercice_presente', "Recopie la leçon sur le participe passé dans ton cahier.", { meta: { matiere: 'français', confiance: 'basse' } }],
+      // Quiz de leçon (DASH-QUIZ), après la dernière consigne : retour sur
+      // l'écran 5 ; carte acceptée dans scenario.evenements (mock/donnees.js).
+      [288, 'message_tuteur', "Avec avoir, quand accorde-t-on le participe passé ?", { meta: { source: 'quizz', numero: 1, total: 2 } }],
+      [293, 'message_enfant_vocal', "quand le COD est avant le verbe"],
+      [294, 'reponse_quizz', null, { meta: { numero: 1, verdict: 'juste' } }],
+      [295, 'message_tuteur', "Et avec être, il s'accorde avec quoi ?", { meta: { source: 'quizz', numero: 2, total: 2 } }],
+      [297, 'message_enfant_vocal', "avec le verbe ?"],
+      [299, 'reponse_quizz', null, { meta: { numero: 2, verdict: 'pas_trouve', relances: 2 } }],
     ],
     6: [
       [80, 'exercice_presente', "Conjugue « finir » au passé composé avec « nous ».", { meta: { matiere: 'français', notions_pressenties: [], confiance: 'haute', ajoute_par_enfant: true } }],
@@ -128,6 +136,8 @@ export function interactionsEcran(s, position) {
   return fil.map(([secondes, type, texte, options = {}], i) => {
     const locuteur = type === 'message_tuteur' ? 'ari'
       : type.startsWith('message_enfant') || type.startsWith('capture_') ? 'enfant' : 'systeme';
+    // Question du quiz : dite par le code (pas d'appel IA, pas de trace).
+    const ia = locuteur === 'ari' && options.meta?.source !== 'quizz';
     return {
       id: idInteraction(s, position, i + 1),
       position: i + 1,
@@ -135,8 +145,8 @@ export function interactionsEcran(s, position) {
       locuteur,
       contenu_texte: texte,
       created_at: instant(s, secondes),
-      llm_generation_id: locuteur === 'ari' ? 'gen-' + s.id + '-' + position + '-' + (i + 1) : null,
-      modele_llm_utilise: locuteur === 'ari' ? (s.mode === 'devoirs' ? 'openai/gpt-5.6-luna' : 'anthropic/claude-sonnet-5') : null,
+      llm_generation_id: ia ? 'gen-' + s.id + '-' + position + '-' + (i + 1) : null,
+      modele_llm_utilise: ia ? (s.mode === 'devoirs' ? 'openai/gpt-5.6-luna' : 'anthropic/claude-sonnet-5') : null,
       a_photo: options.photo === true,
       metadata: options.meta ? structuredClone(options.meta) : null,
     };

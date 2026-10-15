@@ -7,7 +7,9 @@
    avec lien vers la trace IA de chaque réplique d'Ari et miniatures
    des photos (`photos_seance`, chargé après le rendu ; à défaut,
    bouton de téléchargement) ; chronologie technique repliée,
-   acquisitions.
+   acquisitions. Quiz de leçon (DASH-QUIZ, ui/quiz.js) : questions
+   marquées, verdicts et carte « Un petit quiz ? » lisibles dans le
+   fil, résumé dans l'en-tête et sur la carte de l'écran.
    Le mot à mot et les sorties IA sont du contenu non fiable :
    toujours en textContent.
    ============================================================ */
@@ -32,6 +34,7 @@ import {
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { cartesQuiz, prefixeQuestion, questionQuiz, resumeQuiz, texteCarte, texteVerdict } from '../ui/quiz.js';
 
 export const titre = 'Séance';
 
@@ -46,6 +49,9 @@ export async function rendre({ route, api, signal }) {
     return vue;
   }
 
+  const cartes = cartesQuiz(seance.evenements);
+  const quiz = resumeQuiz(seance.ecrans.flatMap((e) => e.interactions), cartes);
+
   const tete = el('div', 'reader-head');
   const titres = el('div', 'reader-titles');
   titres.append(
@@ -59,6 +65,7 @@ export async function rendre({ route, api, signal }) {
     LIBELLE_STATUT[seance.status] || seance.status,
     seance.durationMin == null ? null : fmtDuree(seance.durationMin),
     pluriel(seance.exerciseCount, 'exercice'),
+    quiz,
   ].filter(Boolean).join(' · ')));
   vue.append(tete);
 
@@ -81,7 +88,7 @@ export async function rendre({ route, api, signal }) {
   const contexte = { route, api, prenom: seance.childName, photos };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
   corps.append(el('h2', 'section-title', 'Mot à mot'));
-  corps.append(filSeance(seance.ecrans, contexte));
+  corps.append(filSeance(seance.ecrans, cartes, contexte));
   chargerPhotos(seance, contexte, signal);
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
@@ -147,6 +154,8 @@ function carteEcran(ecran, contexte) {
 
   const contenu = el('div', 'ecran-body');
   contenu.append(el('p', 'ecran-synthese' + (ecran.synthese ? '' : ' is-empty'), ecran.synthese || '—'));
+  const quiz = resumeQuiz(ecran.interactions);
+  if (quiz) contenu.append(el('p', 'ecran-quiz', quiz));
   for (const x of ecran.exercices) contenu.append(carteExercice(x));
   if (ecran.dictee) contenu.append(blocDictee(ecran.dictee));
   const photosEcran = el('div', 'photos-ecran');
@@ -162,17 +171,19 @@ function carteEcran(ecran, contexte) {
 // ---------- Fil tour par tour ----------
 
 // Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
-// chaque changement d'écran (« de retour » s'il a déjà paru).
-function filSeance(ecrans, { route, prenom, photos }) {
+// chaque changement d'écran (« de retour » s'il a déjà paru). Les
+// cartes quiz (sans écran) se glissent à leur heure.
+function filSeance(ecrans, cartes, { route, prenom, photos }) {
   const bloc = el('section', 'fil-seance');
-  const elements = filChronologique(ecrans);
+  const elements = filChronologique(ecrans, cartes);
   if (!elements.length) {
     bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cette séance.'));
     return bloc;
   }
   const fil = el('ol', 'bulles');
-  for (const { ecran, interaction: i, retour } of elements) {
-    if (!i) {
+  for (const { ecran, interaction: i, retour, extra } of elements) {
+    if (extra) fil.append(ligneCarteQuiz(extra));
+    else if (!i) {
       const intertitre = el('li', 'fil-intertitre');
       intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(ecran) + (retour ? ' · de retour' : '')));
       fil.append(intertitre);
@@ -188,6 +199,8 @@ function bulle(i, { route, prenom, photos }) {
   const item = el('li', 'bulle ' + (ari ? 'is-ari' : 'is-enfant'));
   const qui = el('span', 'bulle-qui', ari ? 'Ari' : prenom);
   if (!ari && LIBELLE_INTERACTION[i.type]) qui.append(el('span', 'bulle-type', ' · ' + LIBELLE_INTERACTION[i.type]));
+  const question = ari ? questionQuiz(i) : null;
+  if (question) qui.append(el('span', 'bulle-quiz', prefixeQuestion(question)));
   qui.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''));
   item.append(qui);
 
@@ -208,7 +221,18 @@ function bulle(i, { route, prenom, photos }) {
   return item;
 }
 
+function ligneCarteQuiz(carte) {
+  const item = el('li', 'fil-systeme is-quiz');
+  item.append(el('span', 'bulle-heure', heureParis(carte.createdAt) || ''), el('span', null, texteCarte(carte.choix)));
+  return item;
+}
+
 function ligneSysteme(i) {
+  if (i.type === 'reponse_quizz') {
+    const item = el('li', 'fil-systeme is-quiz');
+    item.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''), el('span', null, texteVerdict(i.metadata)));
+    return item;
+  }
   const item = el('li', 'fil-systeme');
   let texte = LIBELLE_INTERACTION[i.type] || i.type;
   if (i.type === 'pouce_haut_bas') {

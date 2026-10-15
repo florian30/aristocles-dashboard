@@ -137,6 +137,12 @@ const SCENARIOS = [
         ],
       },
     ],
+    // Carte « Un petit quiz ? » acceptée (DASH-QUIZ) : l'app trace
+    // trigger_envoye puis tour_debut pour le même tour — une seule ligne.
+    evenements: [
+      { seq: 1, type: 'trigger_envoye', offsetMs: 286000, ecranType: 'exercice', detail: { tour: 14, type_trigger: 'devoirs_quizz_accepte' } },
+      { seq: 2, type: 'tour_debut', offsetMs: 286150, ecranType: 'exercice', detail: { tour: 14, origine: 'trigger', type_trigger: 'devoirs_quizz_accepte' } },
+    ],
   },
   // 2 — La division posée (entraînement)
   {

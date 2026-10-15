@@ -9,11 +9,13 @@
    À égalité d'heure, l'ordre reçu (écrans puis position) est gardé.
    Un tour sans heure prend celle du tour qui le précède dans l'ordre
    reçu : il reste à côté de ses voisins.
+   `extras` : lignes sans écran (cartes quiz, DASH-QUIZ) glissées à
+   leur heure, sans intertitre ; à égalité, après les tours.
    ============================================================ */
 
-// → [{ ecran, retour } | { ecran, interaction }] : un intertitre
-// (`retour` : l'écran a déjà paru plus haut) puis ses tours.
-export function filChronologique(ecrans) {
+// → [{ ecran, retour } | { ecran, interaction } | { extra }] : un
+// intertitre (`retour` : l'écran a déjà paru plus haut) puis ses tours.
+export function filChronologique(ecrans, extras = []) {
   const tours = [];
   let precedent = -Infinity;
   for (const ecran of ecrans) {
@@ -23,12 +25,20 @@ export function filChronologique(ecrans) {
       tours.push({ ecran, interaction, t: precedent, rang: tours.length });
     }
   }
+  for (const extra of extras) {
+    const t = extra.createdAt ? Date.parse(extra.createdAt) : NaN;
+    if (!Number.isNaN(t)) tours.push({ extra, t, rang: tours.length });
+  }
   tours.sort((a, b) => a.t - b.t || a.rang - b.rang);
 
   const fil = [];
   const vus = new Set();
   let courant = null;
-  for (const { ecran, interaction } of tours) {
+  for (const { ecran, interaction, extra } of tours) {
+    if (extra) {
+      fil.push({ extra });
+      continue;
+    }
     if (ecran !== courant) {
       fil.push({ ecran, retour: vus.has(ecran) });
       vus.add(ecran);
