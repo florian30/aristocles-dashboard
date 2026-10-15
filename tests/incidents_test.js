@@ -77,6 +77,18 @@ Deno.test('incidents : filtrage des lignes pour creuser', () => {
   assertEquals(filtrerLignes(lignes, { jour: '2026-10-06', famille: 'F5' }).contexte.map((x) => x.code), ['appels']);
 });
 
+Deno.test('incidents : libellés d’OBS-SEANCE, d’erreur_client et des dictées en échec (parité veille)', () => {
+  assertEquals(libelleCode('exercice_selection').libelle, 'Le choix de l’exercice a échoué');
+  assertEquals(libelleCode('quiz_lecture_echec').libelle, 'La lecture des quiz du devoir a échoué');
+  assertEquals(libelleCode('erreur_client:dictee_audio/delai').libelle, 'Plantage de l’app — téléchargement du son de la dictée · délai dépassé');
+  assertEquals(libelleCode('erreur_client:devoirs_photo/http_413').libelle, 'Plantage de l’app — photo du devoir · refus du serveur (HTTP 413)');
+  // Zone ou type inconnu : reste brut (contrat additif).
+  assertEquals(libelleCode('erreur_client:zone_future/type_futur').libelle, 'Plantage de l’app — zone_future · type_futur');
+  assertEquals(libelleCode('erreur_client:parent_hub').libelle, 'Plantage de l’app — accueil de l’espace parent');
+  assertEquals(libelleCode('dictee_echec_voix').libelle, 'Une dictée finie en échec (voix non fabriquée)');
+  assertEquals(libelleCode('dictee_echec_cause_future').libelle, 'Une dictée finie en échec (cause_future)');
+});
+
 Deno.test('incidents : libellés produit, code brut gardé, code inconnu affiché tel quel', () => {
   assertEquals(libelleCode('content_filter'), { libelle: 'Le fournisseur a refusé le contenu (filtre)', brut: 'content_filter' });
   assertEquals(libelleCode('erreur_client:dictee/TimeoutException').libelle, 'Plantage de l’app — dictee · TimeoutException');
