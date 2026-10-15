@@ -19,7 +19,7 @@
      `avec_sans_echange: true`) ; `sansEchange` est leur nombre dans la
      plage, null si l'Edge de l'environnement ne le renvoie pas encore.
    Comptes de test internes (contrat v2.8 § 1.10) : session, journee,
-     apercu, sante et enfants reçoivent `avec_internes: true` si
+     apercu, sante, enfants et retours reçoivent `avec_internes: true` si
      options.avecInternes ; sinon rien n'est posé (une Edge d'avant le
      paramètre l'ignore, celle d'après écarte les internes par défaut).
      `enfant` n'écarte pas : la fiche dit `identite.compteInterne`.
@@ -995,11 +995,12 @@ export function creerApi({ transport, cache = creerCache() }) {
         throw e;
       }
     },
-    // Liste : en cache (5 min), vidé par retourStatut. Filtre statut optionnel.
+    // Liste : en cache (5 min), vidé par retourStatut. Filtre statut optionnel ;
+    // options.avecInternes → `avec_internes: true` (contrat v2.8 § 1.10).
     async retours(env, { from, to, statut } = {}, options) {
       const params = plageOptionnelle(from, to);
       if (statut) params.statut = statut;
-      return adapterRetours(await appeler(env, 'retours', params, options));
+      return adapterRetours(await appeler(env, 'retours', ...usage(params, options)));
     },
     // Hors cache : la capture est une URL signée d'1 h.
     async retour(env, retourId, options = {}) {

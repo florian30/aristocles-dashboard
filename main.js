@@ -231,7 +231,7 @@ function afficherCoque(route, session) {
     const a = lien(construireHash({ env: route.env, vue: item.vue, query: queryDeSection(internesActif) }), 'tab' + (actif ? ' is-active' : ''), item.libelle);
     if (actif) a.setAttribute('aria-current', 'page');
     nav.append(a);
-    if (item.vue === 'retours') poserPastilleRetours(a, route.env);
+    if (item.vue === 'retours') poserPastilleRetours(a, route.env, internesActif);
   }
 
   const compte = el('div', 'topbar-account');
@@ -243,9 +243,10 @@ function afficherCoque(route, session) {
 
 // Pastille « N nouveaux » sur l'onglet Retours. La liste passe par le
 // cache (5 min, vidé à chaque changement de statut) ; un échec (Edge
-// pas encore à jour, réseau) n'affiche simplement rien.
-function poserPastilleRetours(onglet, env) {
-  api.retours(env).then((r) => {
+// pas encore à jour, réseau) n'affiche simplement rien. Elle suit
+// l'interrupteur « Comptes de test internes », comme la page.
+function poserPastilleRetours(onglet, env, avecInternes) {
+  api.retours(env, {}, { avecInternes }).then((r) => {
     const n = r.compteurs.nouveau;
     if (n > 0 && onglet.isConnected) onglet.append(el('span', 'tab-pastille', vueRetours.libelleNouveaux(n)));
   }).catch(() => {});

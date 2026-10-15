@@ -153,3 +153,29 @@ Deno.test('mock : le compte de test interne est écarté par défaut, réaffich�
   const a1 = await api.apercu('prod', from, to, { avecInternes: true });
   assert(a1.seances.total > a0.seances.total);
 });
+
+Deno.test('internes : la page Retours et sa pastille suivent l’interrupteur', async () => {
+  const recus = [];
+  const api = creerApi({ transport: async (_env, action, params) => {
+    recus.push({ action, params });
+    return {};
+  } });
+  await api.retours('prod', { statut: 'nouveau' }, { avecInternes: true });
+  await api.retours('prod', {}, { avecInternes: true }); // pastille
+  await api.retours('prod', {}, { avecInternes: false });
+  assertEquals(recus.map((r) => r.params), [
+    { statut: 'nouveau', avec_internes: true },
+    { avec_internes: true },
+    {},
+  ]);
+
+  // Mock : le retour du compte interne (ret-04, nouveau) n'apparaît qu'avec le param.
+  const mock = creerApi({
+    transport: transportMock({ estConnecte: () => true, estAutorise: () => true, delaiMs: 0 }),
+  });
+  const sans = await mock.retours('prod');
+  const avec = await mock.retours('prod', {}, { avecInternes: true });
+  assert(!sans.retours.some((r) => r.id === 'ret-04'));
+  assert(avec.retours.some((r) => r.id === 'ret-04'));
+  assertEquals(avec.compteurs.nouveau, sans.compteurs.nouveau + 1);
+});

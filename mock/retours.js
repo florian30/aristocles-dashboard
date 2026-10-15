@@ -9,11 +9,13 @@
    sans enfant (lu), un retour inscrit au registre dont la capture
    est purgée (inscrit). Le fil d'usage du premier a un événement
    après l'envoi ; ses erreurs des 7 jours en comptent une d'un autre
-   lancement.
+   lancement. Un quatrième (nouveau) vient du compte de test interne
+   de Camille (c9) : écarté sauf `avec_internes: true` (§ 1.10).
    ============================================================ */
 
 import { ApiError } from '../api.js';
 import { SESSIONS, isoDaysAgo } from './donnees.js';
+import { ecarteInternes } from './outils.js';
 
 const STATUTS = ['nouveau', 'lu', 'inscrit', 'clos'];
 const MOTIF_REF = /^R-\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -66,6 +68,17 @@ function graines() {
       client_ts: instant(8, '18:02'), cree_le: instant(8, '18:02'),
       appareil: null,
       texte: "La photo du cahier était floue mais Ari a quand même lu les consignes de travers.",
+    },
+    {
+      id: 'ret-04', parent_id: 'p-0008', parent_email: 'equipe.test@example.org',
+      enfant: { child_id: 'c9', prenom: 'Camille', classe: 'CM2' },
+      categorie: 'autre', ou: 'espace_parent', saisie: 'texte', prises_voix: 0,
+      app: { version: '1.4.1', build: 214, plateforme: 'ios', env: 'prod' },
+      statut: 'nouveau', ref_registre: null, a_capture: false, capture_purgee: false,
+      session_id: null, seance: null, lancement_id: 'lan-04',
+      client_ts: instant(1, '09:30'), cree_le: instant(1, '09:30'),
+      appareil: { modele: 'iPhone 15', systeme: 'iOS 18.1' },
+      texte: "Test interne : envoi d'un avis depuis le build 214.",
     },
   ];
 }
@@ -126,7 +139,8 @@ export function creerRetoursMock() {
       if (params.statut != null && !STATUTS.includes(params.statut)) {
         throw new ApiError("'statut' must be one of 'nouveau', 'lu', 'inscrit', 'clos'", 400);
       }
-      const dans = retours.filter((r) => (!params.from || r.cree_le >= params.from) && (!params.to || r.cree_le <= params.to))
+      // L'Edge écarte par parent ; ici, le seul parent interne est celui de c9.
+      const dans = ecarteInternes(retours, params, (r) => r.enfant?.child_id).filter((r) => (!params.from || r.cree_le >= params.from) && (!params.to || r.cree_le <= params.to))
         .sort((a, b) => b.cree_le.localeCompare(a.cree_le));
       const compteurs = { nouveau: 0, lu: 0, inscrit: 0, clos: 0 };
       for (const r of dans) compteurs[r.statut]++;
