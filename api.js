@@ -18,10 +18,11 @@
      et enfant les écartent sauf options.avecSansEchange (→ param
      `avec_sans_echange: true`) ; `sansEchange` est leur nombre dans la
      plage, null si l'Edge de l'environnement ne le renvoie pas encore.
-   Comptes de test internes (lot DASH-TRIS-INTERNES) : session, journee,
-     apercu, sante, enfants et enfant reçoivent `avec_internes: true` si
+   Comptes de test internes (contrat v2.8 § 1.10) : session, journee,
+     apercu, sante et enfants reçoivent `avec_internes: true` si
      options.avecInternes ; sinon rien n'est posé (une Edge d'avant le
      paramètre l'ignore, celle d'après écarte les internes par défaut).
+     `enfant` n'écarte pas : la fiche dit `identite.compteInterne`.
    detail(env, sessionId) → { …, resume, homework, consignes[], ecrans[]
      (avec interactions[], dictee, premiereActiviteAt ; dans l'ordre reçu,
      l'Edge les trie par 1re activité), acquisitions[], evenements[] } ou null
@@ -574,7 +575,11 @@ export function adapterEnfant(data) {
   return {
     from: data.from || null,
     to: data.to || null,
-    identite: adapterIdentite(data.identite || {}),
+    identite: {
+      ...adapterIdentite(data.identite || {}),
+      // Contrat v2.8 § 1.10 : sur la fiche seule ; absent avant → false.
+      compteInterne: data.identite?.compte_interne === true,
+    },
     sansEchange: nbSansEchange(data),
     seances: tableau(data.seances).map(adapterResumeSeance),
     maitrise: tableau(data.maitrise).map((x) => ({
@@ -962,7 +967,7 @@ export function creerApi({ transport, cache = creerCache() }) {
     },
     async enfant(env, childId, from, to, options) {
       try {
-        return adapterEnfant(await appeler(env, 'enfant', ...usage({ child_id: childId, ...plageOptionnelle(from, to) }, options)));
+        return adapterEnfant(await appeler(env, 'enfant', ...usage({ child_id: childId, ...plageOptionnelle(from, to) }, { ...options, avecInternes: false })));
       } catch (e) {
         if (e.status === 404) return null;
         throw e;

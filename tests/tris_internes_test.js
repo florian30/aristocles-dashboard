@@ -66,9 +66,12 @@ Deno.test('internes : avec_internes passé à l’Edge seulement si l’interrup
   await api.apercu('prod', '2026-10-01', '2026-10-07', avec);
   await api.sante('prod', '2026-10-01', '2026-10-07', avec);
   await api.enfants('prod', null, null, avec);
-  await api.enfant('prod', 'c1', null, null, avec);
-  assertEquals(recus.map((r) => r.action), ['session', 'journee', 'apercu', 'sante', 'enfants', 'enfant']);
+  assertEquals(recus.map((r) => r.action), ['session', 'journee', 'apercu', 'sante', 'enfants']);
   assert(recus.every((r) => r.params.avec_internes === true));
+  // `enfant` n'écarte pas (contrat v2.8 § 1.10) : jamais de param.
+  recus.length = 0;
+  await api.enfant('prod', 'c1', null, null, avec);
+  assertEquals(recus[0].params, { child_id: 'c1' });
 
   recus.length = 0;
   await api.sessions('prod', '2026-10-01', '2026-10-07', null, { avecInternes: false });
@@ -128,8 +131,11 @@ Deno.test('mock : le compte de test interne est écarté par défaut, réaffich�
   assert(ids(avec.enfants).includes('c9'));
   assertEquals(avec.enfants.length, sans.enfants.length + 1);
 
-  assertEquals(await api.enfant('prod', 'c9'), null); // 404 : écarté
-  assertEquals((await api.enfant('prod', 'c9', null, null, { avecInternes: true })).identite.prenom, 'Camille');
+  // La fiche s'ouvre par son id, avec le drapeau pour le badge.
+  const fiche = await api.enfant('prod', 'c9');
+  assertEquals(fiche.identite.prenom, 'Camille');
+  assertEquals(fiche.identite.compteInterne, true);
+  assertEquals((await api.enfant('prod', 'c1')).identite.compteInterne, false);
 
   const to = hierParis();
   const from = decalerJour(to, -6);

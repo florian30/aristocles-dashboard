@@ -148,7 +148,7 @@ function memoire(c, miennes) {
 
 export function enfant(params = {}) {
   const c = CHILDREN.find((x) => x.id === params.child_id);
-  if (!c || (estInterne(c.id) && params.avec_internes !== true)) return undefined;
+  if (!c) return undefined; // une fiche s'ouvre par son id, interne ou non (§ 1.10)
   const miennes = seancesDe(c.id, params);
   const derniere = miennes[0]?.s.startedAt || null;
   const bilansEnfant = bilans(c, miennes);
@@ -163,7 +163,7 @@ export function enfant(params = {}) {
   return {
     from: params.from || null,
     to: params.to || null,
-    identite: identite(c),
+    identite: { ...identite(c), compte_interne: estInterne(c.id) }, // § 1.10 : fiche seule
     seances_sans_echange: nbSansEchange(c.id, params),
     seances: miennes.map(({ s, i }) => resumeSeance(s, i)),
     maitrise,

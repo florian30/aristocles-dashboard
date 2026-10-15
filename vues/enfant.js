@@ -29,7 +29,6 @@ import { fmtInstantParis, fmtJourCourt, jourParis } from '../ui/paris.js';
 import { periodeDepuisQuery } from '../ui/periode.js';
 import { estAnnulation } from '../api.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
-import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 import { etoiles } from './familles.js';
 
@@ -37,25 +36,18 @@ export const titre = 'Fiche enfant';
 
 export async function rendre({ route, api, signal }) {
   const periode = periodeDepuisQuery(route.query, new Date(), { defaut: '92j' });
-  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, {
-    signal, avecSansEchange: avecSansEchange(route), avecInternes: avecInternes(route),
-  });
+  const fiche = await api.enfant(route.env, route.childId, periode.from, periode.to, { signal, avecSansEchange: avecSansEchange(route) });
 
   const vue = el('div', 'vue vue-familles vue-enfant');
   vue.append(lien(construireHash({ env: route.env, vue: 'familles' }), 'reader-back', '← Retour aux familles'));
   if (!fiche) {
-    // Un enfant d'un compte de test interne est écarté tant que l'interrupteur est coupé.
-    vue.append(etatErreur('Enfant introuvable', 'Aucun enfant « ' + route.childId + ' » sur ' + route.env +
-      (avecInternes(route) ? '.' : ' parmi les comptes affichés — s’il s’agit d’un compte de test interne, activez l’interrupteur.'),
-    avecInternes(route) ? [] : [interrupteurInternes(route)]));
+    vue.append(etatErreur('Enfant introuvable', 'Aucun enfant « ' + route.childId + ' » sur ' + route.env + '.'));
     return vue;
   }
   const { identite: id } = fiche;
   document.title = id.prenom + ' · ' + route.env + ' · Aristocles';
 
-  const barre = barrePeriode(route, periode);
-  barre.append(interrupteurInternes(route));
-  vue.append(entete(fiche), barre);
+  vue.append(entete(fiche), barrePeriode(route, periode));
 
   const env = route.env;
   const seances = section('Séances', fiche.seances.length, tableSeances(fiche.seances, env));
@@ -87,6 +79,8 @@ function entete(fiche) {
   nom.append(el('h1', 'page-title', id.prenom));
   if (id.classe) nom.append(el('span', 'chip is-muted', id.classe));
   if (id.genre) nom.append(el('span', 'chip is-muted', LIBELLE_GENRE[id.genre] || id.genre));
+  // La fiche s'ouvre toujours par son id, interne ou non (contrat v2.8 § 1.10).
+  if (id.compteInterne) nom.append(el('span', 'chip is-muted chip-interne', 'Compte de test interne'));
   nom.append(etoiles(fiche.notionsAcquises));
 
   const parent = el('div', 'fiche-parent');
