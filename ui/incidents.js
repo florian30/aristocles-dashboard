@@ -101,6 +101,7 @@ const LIBELLE_CODE = {
   'tour_anomalie:echec_llm': 'Tour sans réponse de l’IA',
   quota_atteint: 'Plafond du jour atteint, Ari « fatigué » (voulu)',
   'tour_erreur:doublon': 'Même tour sans réponse de l’IA (déjà compté)',
+  'tour_erreur:micro_refuse': 'Micro refusé par le parent (pas une panne)',
   'filet_echec_llm:doublon': 'Filet du même tour (déjà compté)',
   ecriture_echec: 'Échec d’enregistrement',
   tts_fallback_correction: 'Voix de secours pendant une correction',
