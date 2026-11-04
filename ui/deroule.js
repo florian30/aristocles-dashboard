@@ -28,6 +28,8 @@ const tableau = (v) => (Array.isArray(v) ? v : []);
 export function adapterTourDeroule(t) {
   return {
     tour: Number.isInteger(t?.tour) ? t.tour : null,
+    // 1, puis 2… à chaque reprise de la séance (le compteur de tours repart).
+    passage: Number.isInteger(t?.passage) && t.passage > 0 ? t.passage : 1,
     debutAt: t?.debut_at || null,
     origine: t?.origine || null,
     typeTrigger: t?.type_trigger || null,
@@ -74,9 +76,12 @@ export function lignesDeroule(t) {
   return lignes;
 }
 
-// Le résumé replié : « Déroulé · tour 3 · 2 outils · 1 refusé ».
+// Le résumé replié : « Déroulé · tour 3 · 2 outils · 1 refusé » ; sur
+// une séance reprise, « Déroulé · tour 1 · reprise · … ». « non tracé »
+// reste un texte neutre (séance ancienne, tour abandonné) : pas un défaut.
 export function resumeDeroule(t) {
   const morceaux = ['Déroulé', t.tour == null ? 'hors tour' : 'tour ' + t.tour];
+  if (t.passage > 1) morceaux.push(t.passage === 2 ? 'reprise' : 'reprise ' + (t.passage - 1));
   if (t.etape) morceaux.push(t.etape.etape);
   if (t.boutons.length) morceaux.push(t.boutons.length === 1 ? '1 bouton' : t.boutons.length + ' boutons');
   if (t.outils?.length) morceaux.push(t.outils.length === 1 ? '1 outil' : t.outils.length + ' outils');

@@ -84,6 +84,7 @@ function derouleFactice(s, ecrans) {
       const devoirs = s.mode === 'devoirs';
       tours.push({
         tour: n,
+        passage: 1,
         debut_at: i.created_at,
         origine: 'ptt',
         type_trigger: null,

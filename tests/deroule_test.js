@@ -19,6 +19,7 @@ const BRUT = {
 Deno.test('déroulé : adaptateur, forme du front', () => {
   assertEquals(adapterTourDeroule(BRUT), {
     tour: 3,
+    passage: 1,
     debutAt: '2026-07-10T17:06:00Z',
     origine: 'ptt',
     typeTrigger: null,
@@ -53,6 +54,12 @@ Deno.test('déroulé : lignes et résumé', () => {
   assert(lignesDeroule(t2).some(([l, v]) => l === 'Bouton touché' && v === 'x'));
   assert(lignesDeroule(t2).some(([l, v]) => l === 'Déclencheur' && v === 'correction'));
   assertEquals(resumeDeroule(adapterTourDeroule({ ...BRUT, tour: null })).startsWith('Déroulé · hors tour'), true);
+});
+
+Deno.test('déroulé : séance reprise, le passage se lit dans le résumé', () => {
+  assertEquals(resumeDeroule(adapterTourDeroule({ ...BRUT, passage: 2, boutons: [], outils: [], outils_refuses: [], etape: null })), 'Déroulé · tour 3 · reprise');
+  assertEquals(resumeDeroule(adapterTourDeroule({ ...BRUT, passage: 3, boutons: [], outils: [], outils_refuses: [], etape: null })), 'Déroulé · tour 3 · reprise 2');
+  assertEquals(adapterTourDeroule({ ...BRUT, passage: 'x' }).passage, 1);
 });
 
 Deno.test('déroulé : placement dans le fil', () => {

@@ -466,6 +466,7 @@ export const SESSION_DETAIL = {
   "deroule": [
     {
       "tour": 1,
+      "passage": 1,
       "debut_at": "2026-07-10T17:04:00Z",
       "origine": "ptt",
       "type_trigger": null,
