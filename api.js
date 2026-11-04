@@ -28,6 +28,9 @@
      l'Edge les trie par 1re activité), acquisitions[], evenements[] } ou null
    photosSeance(env, sessionId) → voir adapterPhotosSeance, JAMAIS mis en
      cache (URLs signées d'1 h) ; null pour une séance inconnue
+   voixSeance(env, sessionId) → voir adapterVoixSeance (prises de voix de
+     l'enfant, contrat v2.9 § 2.16), JAMAIS mis en cache (URLs signées
+     d'1 h) ; null pour une séance inconnue
    enfants(env, from?, to?) → voir adapterEnfants (Familles)
    enfant(env, childId, from?, to?) → voir adapterEnfant ou null
    tour(env, generationId) → voir adapterTour ou null
@@ -709,6 +712,31 @@ export function adapterPhotosSeance(data) {
   };
 }
 
+// Prises de voix d'une séance (STOCKAGE-AUDIO-STT lot 2, contrat v2.9
+// § 2.16). Une prise purgée (ou sans URL) n'a jamais d'URL ; un tour de
+// `toursEffaces` a perdu sa prise (ligne purgée après 30 jours).
+export function adapterVoixSeance(data) {
+  return {
+    sessionId: data.session_id || null,
+    validiteS: nombreOuNull(data.validite_s),
+    expireLe: data.expire_le || null,
+    prises: tableau(data.prises).map((p) => {
+      const purgee = p.etat === 'purgee' || !p.url;
+      return {
+        rang: p.rang ?? null,
+        interactionId: p.interaction_id || null,
+        filtre: typeof p.filtre === 'string' && p.filtre ? p.filtre : 'aucun',
+        transcription: typeof p.transcription === 'string' ? p.transcription : '',
+        dureeS: nombreOuNull(p.duree_s),
+        priseLe: p.prise_le || null,
+        purgee,
+        url: purgee ? null : p.url,
+      };
+    }),
+    toursEffaces: tableau(data.tours_effaces).filter((id) => typeof id === 'string'),
+  };
+}
+
 // Erreur de l'action `photo` → état affichable. Une photo purgée
 // (404 `photo_purgee`) est un état normal, pas une panne.
 export function etatErreurPhoto(e) {
@@ -990,6 +1018,16 @@ export function creerApi({ transport, cache = creerCache() }) {
     async photosSeance(env, sessionId, options = {}) {
       try {
         return adapterPhotosSeance(await transport(env, 'photos_seance', { session_id: sessionId }, options));
+      } catch (e) {
+        if (e.status === 404) return null;
+        throw e;
+      }
+    },
+    // Hors cache : les liens d'écoute expirent en 1 h ; « Recharger »
+    // redemande le lot.
+    async voixSeance(env, sessionId, options = {}) {
+      try {
+        return adapterVoixSeance(await transport(env, 'voix_seance', { session_id: sessionId }, options));
       } catch (e) {
         if (e.status === 404) return null;
         throw e;
