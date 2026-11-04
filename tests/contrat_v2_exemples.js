@@ -412,7 +412,8 @@ export const SESSION_DETAIL = {
           "llm_generation_id": "9e9e9e9e-9e9e-4e9e-8e9e-9e9e9e9e9e9e",
           "modele_llm_utilise": "openai/gpt-5.6-luna",
           "a_photo": false,
-          "metadata": null
+          "metadata": null,
+          "tour": 1
         },
         {
           "id": "1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c",
@@ -460,6 +461,20 @@ export const SESSION_DETAIL = {
       "detail": {
         "tour": 1
       }
+    }
+  ],
+  "deroule": [
+    {
+      "tour": 1,
+      "passage": 1,
+      "debut_at": "2026-07-10T17:04:00Z",
+      "origine": "ptt",
+      "type_trigger": null,
+      "etape": null,
+      "boutons": [],
+      "outils": [],
+      "outils_refuses": [],
+      "interaction_ids": ["1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a"]
     }
   ]
 };

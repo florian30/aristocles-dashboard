@@ -58,6 +58,7 @@ import { CACHE_TTL_MS, ENVS, urlEdge } from './config.js';
 import { dateLocale, enMinutes, heureLocale } from './ui/format.js';
 import { bornesParis, heureParis } from './ui/paris.js';
 import { adapterLlm } from './ui/unites.js';
+import { adapterTourDeroule } from './ui/deroule.js';
 
 export class ApiError extends Error {
   constructor(message, status, donnees = null) {
@@ -187,6 +188,7 @@ export function adapterInteraction(i) {
     modele: i.modele_llm_utilise || null,
     aPhoto: i.a_photo === true,
     metadata: i.metadata ?? null,
+    tour: Number.isInteger(i.tour) ? i.tour : null, // DEROULE-COMPLET
   };
 }
 
@@ -245,6 +247,8 @@ export function adapterDetail(data) {
       exerciseId: e.exercise_id || null,
       detail: e.detail ?? null,
     })),
+    // DEROULE-COMPLET (contrat v2.10) : absent d'une Edge plus ancienne → [].
+    deroule: tableau(data.deroule).map(adapterTourDeroule),
   };
 }
 
