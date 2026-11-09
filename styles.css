@@ -1085,3 +1085,13 @@ span.frise-case { width: 14px; height: 14px; cursor: default; }
 .retours-table .cell-note { display: block; }
 .retour-actions { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .photo-recharger { height: 28px; padding: 0 10px; font-size: 12px; }
+/* ---------- Voix de l'enfant (STOCKAGE-AUDIO-STT lot 2) ---------- */
+.voix-emplacement:empty { display: none; }
+.voix-lecteur { height: 32px; max-width: 100%; }
+.voix-effacee { font-size: 12.5px; font-style: italic; color: var(--terracotta-dark); }
+.voix-autres:empty { display: none; }
+.voix-autres { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.voix-autres-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.voix-autre { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 10px; }
+.voix-autre .bulle-texte { margin: 0; }
+.voix-recharger { align-self: flex-start; height: 28px; padding: 0 10px; font-size: 12px; }

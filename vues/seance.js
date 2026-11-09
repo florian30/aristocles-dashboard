@@ -6,7 +6,8 @@
    système, intertitre à chaque changement d'écran — ui/fil-seance.js),
    avec lien vers la trace IA de chaque réplique d'Ari et miniatures
    des photos (`photos_seance`, chargé après le rendu ; à défaut,
-   bouton de téléchargement) ; chronologie technique repliée,
+   bouton de téléchargement) et lecteur de la voix de l'enfant sur
+   chaque tour vocal gardé (`voix_seance`, ui/voix.js) ; chronologie technique repliée,
    acquisitions. Quiz de leçon (DASH-QUIZ, ui/quiz.js) : questions
    marquées, verdicts et carte « Un petit quiz ? » lisibles dans le
    fil, résumé dans l'en-tête et sur la carte de l'écran.
@@ -35,6 +36,7 @@ import {
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { remplirVoix } from '../ui/voix.js';
 import { cartesQuiz, prefixeQuestion, questionQuiz, resumeQuiz, texteCarte, texteVerdict } from '../ui/quiz.js';
 
 export const titre = 'Séance';
@@ -86,13 +88,18 @@ export async function rendre({ route, api, signal }) {
 
   corps.append(el('h2', 'section-title', 'Écrans'));
   if (seance.ecrans.length === 0) corps.append(el('p', 'reader-empty', 'Aucun écran pour cette séance.'));
-  const contexte = { route, api, prenom: seance.childName, photos };
+  // Voix : emplacements dans les bulles vocales, remplis quand
+  // `voix_seance` répond ; les prises sans tour vont sous le fil.
+  const voix = { parInteraction: new Map(), autres: el('div', 'voix-autres') };
+  const contexte = { route, api, prenom: seance.childName, photos, voix };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
   corps.append(el('h2', 'section-title', 'Mot à mot'));
   // DEROULE-COMPLET : le déroulé de chaque tour, replié, dans le fil.
   const deroule = placerDeroule(seance.deroule);
   corps.append(filSeance(seance.ecrans, [...cartes, ...deroule.extras], { ...contexte, deroule: deroule.parInteraction }));
+  corps.append(voix.autres);
   chargerPhotos(seance, contexte, signal);
+  if (voix.parInteraction.size) remplirVoix(voix, () => api.voixSeance(route.env, seance.id, { signal }));
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
   if (seance.evenements.length > 0) corps.append(carteChronologie(seance.evenements));
@@ -176,7 +183,7 @@ function carteEcran(ecran, contexte) {
 // Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
 // chaque changement d'écran (« de retour » s'il a déjà paru). Les
 // cartes quiz (sans écran) se glissent à leur heure.
-function filSeance(ecrans, cartes, { route, prenom, photos, deroule }) {
+function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
   const bloc = el('section', 'fil-seance');
   const elements = filChronologique(ecrans, cartes);
   if (!elements.length) {
@@ -193,7 +200,7 @@ function filSeance(ecrans, cartes, { route, prenom, photos, deroule }) {
       fil.append(intertitre);
     } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') {
       if (i.locuteur === 'ari' && deroule?.has(i.id)) fil.append(ligneDeroule(deroule.get(i.id)));
-      fil.append(bulle(i, { route, prenom, photos }));
+      fil.append(bulle(i, { route, prenom, photos, voix }));
     }
     else fil.append(ligneSysteme(i));
   }
@@ -201,7 +208,7 @@ function filSeance(ecrans, cartes, { route, prenom, photos, deroule }) {
   return bloc;
 }
 
-function bulle(i, { route, prenom, photos }) {
+function bulle(i, { route, prenom, photos, voix }) {
   const ari = i.locuteur === 'ari';
   const item = el('li', 'bulle ' + (ari ? 'is-ari' : 'is-enfant'));
   const qui = el('span', 'bulle-qui', ari ? 'Ari' : prenom);
@@ -215,6 +222,13 @@ function bulle(i, { route, prenom, photos }) {
   else if (!i.aPhoto) item.append(el('p', 'bulle-texte is-empty', '(sans texte)'));
 
   const actions = el('div', 'bulle-actions');
+  if (i.type === 'message_enfant_vocal' && i.id && voix) {
+    // Vide tant que `voix_seance` n'a pas répondu (et pour toujours si
+    // le tour n'a pas de prise).
+    const emplacement = el('span', 'voix-emplacement');
+    voix.parInteraction.set(i.id, emplacement);
+    actions.append(emplacement);
+  }
   if (i.aPhoto) {
     const emplacement = el('span', 'photo-emplacement', 'Photo…');
     photos.parInteraction.set(i.id, emplacement);
