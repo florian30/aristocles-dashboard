@@ -13,6 +13,8 @@ export function session_detail(params) {
   const enfant = CHILDREN.find((c) => c.id === s.childId);
   const fin = s.durationMin == null ? null : new Date(Date.parse(s.startedAt) + s.durationMin * 60000).toISOString();
   const dictee = dicteeBrute(s);
+  const ecrans = s.ecrans.map((e) => ({ e, interactions: interactionsEcran(s, e.position) }));
+  const deroule = derouleFactice(s, ecrans);
   return {
     session: {
       id: s.id,
@@ -30,7 +32,7 @@ export function session_detail(params) {
     },
     resume_seance: s.resume,
     homework: devoirBrut(s),
-    ecrans: s.ecrans.map((e) => ({ e, interactions: interactionsEcran(s, e.position) })).map(({ e, interactions }) => ({
+    ecrans: ecrans.map(({ e, interactions }) => ({
       id: ecranId(s, e.position),
       position: e.position,
       type: e.type,
@@ -65,7 +67,38 @@ export function session_detail(params) {
       exercise_id: e.exerciseId,
       detail: structuredClone(e.detail),
     })),
+    deroule,
   };
+}
+
+// DEROULE-COMPLET : un tour par message d'Ari (appel IA), annoté sur
+// l'interaction (`tour`) ; en Devoirs, une étape, un bouton au 1er tour et
+// un outil refusé au 2e — de quoi voir chaque ligne en mode démo.
+function derouleFactice(s, ecrans) {
+  const tours = [];
+  for (const { interactions } of ecrans) {
+    for (const i of interactions) {
+      if (!i.llm_generation_id) continue;
+      const n = tours.length + 1;
+      i.tour = n;
+      const devoirs = s.mode === 'devoirs';
+      tours.push({
+        tour: n,
+        passage: 1,
+        debut_at: i.created_at,
+        origine: 'ptt',
+        type_trigger: null,
+        etape: devoirs ? { type: 'exercice', etape: 'conversation' } : null,
+        boutons: devoirs && n === 1 ? [{ id: 'je_commence', libelle: 'Je commence' }] : [],
+        outils: devoirs && n === 1 ? ['regarder_consigne'] : [],
+        outils_refuses: devoirs && n === 2
+          ? [{ outil: 'terminer_seance_devoir', raison: 'hors_regime', type: 'outil_ignore' }]
+          : [],
+        interaction_ids: [i.id],
+      });
+    }
+  }
+  return tours;
 }
 
 function parPremiereActivite(a, b) {

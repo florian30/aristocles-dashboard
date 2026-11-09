@@ -13,7 +13,9 @@
                               (retours parents « Votre avis », AVIS-3 ;
                                ?statut=nouveau|lu|inscrit|clos)
    Une query optionnelle (`?from=…&to=…&child=…`) porte les filtres
-   des écrans de liste, pour qu'un rafraîchissement les conserve.
+   des écrans de liste, pour qu'un rafraîchissement les conserve ;
+   `tri=…&sens=asc|desc` le tri de Familles, `internes=1` l'interrupteur
+   « Comptes de test internes », reporté d'écran en écran (ui/internes.js).
 
    analyserHash / construireHash sont pures (testées sous Deno) ;
    seul ecouterHash touche à `window`.

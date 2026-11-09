@@ -16,15 +16,16 @@ export function lien(href, className, texte) {
   return a;
 }
 
-// Tableau en grille CSS. colonnes : [{ titre, classe?, largeur }],
+// Tableau en grille CSS. colonnes : [{ titre, classe?, largeur, tri? }],
 // lignes : tableau de tableaux de cellules (Node ou texte), ou
 // { cellules, href?, classe? } pour une ligne cliquable.
+// tri : { href, sens: 'asc' | 'desc' | null } → en-tête cliquable (ui/tri.js).
 export function tableau({ classe = '', colonnes, lignes, vide = 'Aucune donnée.' }) {
   const table = el('div', 'data-table ' + classe);
   table.style.setProperty('--colonnes', colonnes.map((c) => c.largeur || '1fr').join(' '));
 
   const tete = el('div', 'table-head');
-  for (const c of colonnes) tete.append(el('span', 'eyebrow ' + (c.classe || ''), c.titre));
+  for (const c of colonnes) tete.append(c.tri ? enteteTri(c) : el('span', 'eyebrow ' + (c.classe || ''), c.titre));
   table.append(tete);
 
   if (lignes.length === 0) {
@@ -43,6 +44,15 @@ export function tableau({ classe = '', colonnes, lignes, vide = 'Aucune donnée.
     table.append(rangee);
   }
   return table;
+}
+
+const SENS = { asc: ['↑', 'croissant'], desc: ['↓', 'décroissant'] };
+
+function enteteTri({ titre, classe, tri }) {
+  const a = lien(tri.href, 'eyebrow th-tri' + (tri.sens ? ' is-active' : '') + (classe ? ' ' + classe : ''));
+  a.append(el('span', null, titre), el('span', 'th-tri-sens', tri.sens ? SENS[tri.sens][0] : '↕'));
+  a.setAttribute('aria-label', 'Trier par ' + titre + (tri.sens ? ' (tri actuel : ' + SENS[tri.sens][1] + ')' : ''));
+  return a;
 }
 
 export function carteKpi(libelle, valeur, note) {

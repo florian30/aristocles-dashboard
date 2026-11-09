@@ -13,12 +13,15 @@ import { carteKpi, el, lien, tableau } from '../ui/dom.js';
 import { fmtDureeSec, fmtEntier, pluriel } from '../ui/format.js';
 import { LIBELLE_MODE, libelleCloture } from '../ui/libelles.js';
 import { fmtJourCourt, fmtJourTitre, navigationJour } from '../ui/paris.js';
+import { avecInternes, interrupteurInternes } from '../ui/internes.js';
 import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 
 export const titre = 'La veille';
 
 export async function rendre({ route, api, signal }) {
-  const jour = await api.journee(route.env, route.date, { signal, avecSansEchange: avecSansEchange(route) });
+  const jour = await api.journee(route.env, route.date, {
+    signal, avecSansEchange: avecSansEchange(route), avecInternes: avecInternes(route),
+  });
 
   const vue = el('div', 'vue vue-veille');
   vue.append(entete(route));
@@ -83,6 +86,7 @@ function entete(route) {
 
   commandes.append(precedent, suivant, choix);
   if (route.date !== nav.hier) commandes.append(lien(construireHash({ ...route, date: nav.hier }), 'day-hier', 'Revenir à hier'));
+  commandes.append(interrupteurInternes(route));
   tete.append(titres, commandes);
   return tete;
 }

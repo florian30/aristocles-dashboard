@@ -1,11 +1,15 @@
 /* ============================================================
    Relecture de séance (action `session_detail`) : bilan, devoir et
-   consignes vues par l'enfant, puis par écran (dans l'ordre de leur
-   1re activité, tel que reçu) le fil tour par tour (enfant / Ari /
-   système), avec lien vers la trace IA de chaque réplique d'Ari et
-   miniatures des photos (`photos_seance`, chargé après le rendu ;
-   à défaut, bouton de téléchargement) ; dictée de l'écran,
-   chronologie technique repliée, acquisitions.
+   consignes vues par l'enfant, les écrans (dans l'ordre de leur
+   1re activité, tel que reçu : synthèse, exercices, dictée), puis le
+   mot à mot en un seul fil dans l'ordre de l'heure (enfant / Ari /
+   système, intertitre à chaque changement d'écran — ui/fil-seance.js),
+   avec lien vers la trace IA de chaque réplique d'Ari et miniatures
+   des photos (`photos_seance`, chargé après le rendu ; à défaut,
+   bouton de téléchargement) ; chronologie technique repliée,
+   acquisitions. Quiz de leçon (DASH-QUIZ, ui/quiz.js) : questions
+   marquées, verdicts et carte « Un petit quiz ? » lisibles dans le
+   fil, résumé dans l'en-tête et sur la carte de l'écran.
    Le mot à mot et les sorties IA sont du contenu non fiable :
    toujours en textContent.
    ============================================================ */
@@ -13,6 +17,8 @@
 import { construireHash } from '../router.js';
 import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
 import { carteDictee } from '../ui/dictee.js';
+import { lignesDeroule, placerDeroule, resumeDeroule } from '../ui/deroule.js';
+import { filChronologique } from '../ui/fil-seance.js';
 import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { estAnnulation } from '../api.js';
 import { fmtDuree, fmtDureeSec, fmtHorodatagePrecis, fmtJour, fmtJourHeure, pluriel } from '../ui/format.js';
@@ -29,6 +35,7 @@ import {
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { cartesQuiz, prefixeQuestion, questionQuiz, resumeQuiz, texteCarte, texteVerdict } from '../ui/quiz.js';
 
 export const titre = 'Séance';
 
@@ -43,6 +50,9 @@ export async function rendre({ route, api, signal }) {
     return vue;
   }
 
+  const cartes = cartesQuiz(seance.evenements);
+  const quiz = resumeQuiz(seance.ecrans.flatMap((e) => e.interactions), cartes);
+
   const tete = el('div', 'reader-head');
   const titres = el('div', 'reader-titles');
   titres.append(
@@ -56,6 +66,7 @@ export async function rendre({ route, api, signal }) {
     LIBELLE_STATUT[seance.status] || seance.status,
     seance.durationMin == null ? null : fmtDuree(seance.durationMin),
     pluriel(seance.exerciseCount, 'exercice'),
+    quiz,
   ].filter(Boolean).join(' · ')));
   vue.append(tete);
 
@@ -73,10 +84,14 @@ export async function rendre({ route, api, signal }) {
   const photos = { parInteraction: new Map(), parEcran: new Map(), tete: el('div', 'photos-seance') };
   corps.append(photos.tete);
 
-  corps.append(el('h2', 'section-title', 'Fil de la séance'));
+  corps.append(el('h2', 'section-title', 'Écrans'));
   if (seance.ecrans.length === 0) corps.append(el('p', 'reader-empty', 'Aucun écran pour cette séance.'));
   const contexte = { route, api, prenom: seance.childName, photos };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
+  corps.append(el('h2', 'section-title', 'Mot à mot'));
+  // DEROULE-COMPLET : le déroulé de chaque tour, replié, dans le fil.
+  const deroule = placerDeroule(seance.deroule);
+  corps.append(filSeance(seance.ecrans, [...cartes, ...deroule.extras], { ...contexte, deroule: deroule.parInteraction }));
   chargerPhotos(seance, contexte, signal);
 
   // Chronologie technique : absente tant qu'aucun événement n'est journalisé.
@@ -123,11 +138,12 @@ function carteConsignes(consignes) {
   return carte;
 }
 
+const nomEcran = (ecran) => 'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
+
 function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
   const tete = el('div', 'ecran-head');
-  const titreEcran = el('span', 'ecran-title',
-    'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type));
+  const titreEcran = el('span', 'ecran-title', nomEcran(ecran));
   if (ecran.premiereActiviteAt) titreEcran.append(el('span', 'ecran-activite', ' · 1re activité ' + heureParis(ecran.premiereActiviteAt)));
   tete.append(titreEcran);
   const drapeaux = el('div', 'ecran-flags');
@@ -141,28 +157,44 @@ function carteEcran(ecran, contexte) {
 
   const contenu = el('div', 'ecran-body');
   contenu.append(el('p', 'ecran-synthese' + (ecran.synthese ? '' : ' is-empty'), ecran.synthese || '—'));
+  const quiz = resumeQuiz(ecran.interactions);
+  if (quiz) contenu.append(el('p', 'ecran-quiz', quiz));
   for (const x of ecran.exercices) contenu.append(carteExercice(x));
   if (ecran.dictee) contenu.append(blocDictee(ecran.dictee));
   const photosEcran = el('div', 'photos-ecran');
   contexte.photos.parEcran.set(ecran.id, photosEcran);
   contenu.append(photosEcran);
-  contenu.append(filEcran(ecran, contexte));
+  contenu.append(el('p', 'cell-note', ecran.interactions.length
+    ? pluriel(ecran.interactions.length, 'tour') + ' dans le mot à mot'
+    : 'Pas de mot à mot enregistré pour cet écran.'));
   carte.append(tete, contenu);
   return carte;
 }
 
 // ---------- Fil tour par tour ----------
 
-function filEcran(ecran, { route, prenom, photos }) {
-  const bloc = el('div', 'fil-ecran');
-  bloc.append(el('span', 'eyebrow', 'Mot à mot'));
-  if (!ecran.interactions.length) {
-    bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cet écran.'));
+// Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
+// chaque changement d'écran (« de retour » s'il a déjà paru). Les
+// cartes quiz (sans écran) se glissent à leur heure.
+function filSeance(ecrans, cartes, { route, prenom, photos, deroule }) {
+  const bloc = el('section', 'fil-seance');
+  const elements = filChronologique(ecrans, cartes);
+  if (!elements.length) {
+    bloc.append(el('p', 'reader-empty', 'Pas de mot à mot enregistré pour cette séance.'));
     return bloc;
   }
   const fil = el('ol', 'bulles');
-  for (const i of ecran.interactions) {
-    if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, prenom, photos }));
+  for (const { ecran, interaction: i, retour, extra } of elements) {
+    if (extra?.deroule) fil.append(ligneDeroule(extra.deroule));
+    else if (extra) fil.append(ligneCarteQuiz(extra));
+    else if (!i) {
+      const intertitre = el('li', 'fil-intertitre');
+      intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(ecran) + (retour ? ' · de retour' : '')));
+      fil.append(intertitre);
+    } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') {
+      if (i.locuteur === 'ari' && deroule?.has(i.id)) fil.append(ligneDeroule(deroule.get(i.id)));
+      fil.append(bulle(i, { route, prenom, photos }));
+    }
     else fil.append(ligneSysteme(i));
   }
   bloc.append(fil);
@@ -174,6 +206,8 @@ function bulle(i, { route, prenom, photos }) {
   const item = el('li', 'bulle ' + (ari ? 'is-ari' : 'is-enfant'));
   const qui = el('span', 'bulle-qui', ari ? 'Ari' : prenom);
   if (!ari && LIBELLE_INTERACTION[i.type]) qui.append(el('span', 'bulle-type', ' · ' + LIBELLE_INTERACTION[i.type]));
+  const question = ari ? questionQuiz(i) : null;
+  if (question) qui.append(el('span', 'bulle-quiz', prefixeQuestion(question)));
   qui.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''));
   item.append(qui);
 
@@ -194,7 +228,33 @@ function bulle(i, { route, prenom, photos }) {
   return item;
 }
 
+// DEROULE-COMPLET : le déroulé d'un tour, replié par défaut. Que des
+// codes et des libellés de l'app ; textContent quand même (journal).
+function ligneDeroule(t) {
+  const item = el('li', 'fil-deroule');
+  const details = el('details', 'deroule');
+  const resume = el('summary', 'deroule-resume');
+  if (t.debutAt) resume.append(el('span', 'bulle-heure', heureParis(t.debutAt) || ''));
+  resume.append(el('span', null, resumeDeroule(t)));
+  const liste = el('dl', 'deroule-lignes');
+  for (const [cle, valeur] of lignesDeroule(t)) liste.append(el('dt', null, cle), el('dd', 'mono', valeur));
+  details.append(resume, liste);
+  item.append(details);
+  return item;
+}
+
+function ligneCarteQuiz(carte) {
+  const item = el('li', 'fil-systeme is-quiz');
+  item.append(el('span', 'bulle-heure', heureParis(carte.createdAt) || ''), el('span', null, texteCarte(carte.choix)));
+  return item;
+}
+
 function ligneSysteme(i) {
+  if (i.type === 'reponse_quizz') {
+    const item = el('li', 'fil-systeme is-quiz');
+    item.append(el('span', 'bulle-heure', heureParis(i.createdAt) || ''), el('span', null, texteVerdict(i.metadata)));
+    return item;
+  }
   const item = el('li', 'fil-systeme');
   let texte = LIBELLE_INTERACTION[i.type] || i.type;
   if (i.type === 'pouce_haut_bas') {

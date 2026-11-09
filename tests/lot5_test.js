@@ -84,6 +84,7 @@ Deno.test('adaptateur session_detail enrichi : exemple du contrat', () => {
     modele: 'openai/gpt-5.6-luna',
     aPhoto: false,
     metadata: null,
+    tour: 1,
   });
   assertEquals([e1.dictee, e2.interactions, e1.pouce], [null, [], 'haut']);
   assertEquals(d.evenements[0].detail, { tour: 1 });

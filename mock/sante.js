@@ -9,7 +9,7 @@ import { journeeBrute } from './journee.js';
 
 export function sante(params = {}) {
   const dates = joursDeLaPlage(params);
-  const jours = dates.map((d) => journeeBrute(d));
+  const jours = dates.map((d) => journeeBrute(d, { avec_internes: params.avec_internes === true }));
 
   // Erreurs client groupées par (type, zone, écran, version, plateforme).
   const erreurs = new Map();
