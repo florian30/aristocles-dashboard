@@ -119,6 +119,9 @@ const LIBELLE_CODE = {
   cron_http_reponses: 'Appels des automates vers les fonctions (tous réussis)',
   purge_echec: 'La purge des photos n’a pas tout effacé',
   purge_passages: 'Passages de la purge des photos (tous réussis)',
+  // VEILLE-SYNTHESE-PGNET (09-11-2026) : le cron d’une purge a tourné, mais
+  // la purge n’a rien écrit dans son journal (refusée ou muette).
+  purge_absente: 'Le cron d’une purge a tourné, mais la purge n’a pas eu lieu',
   extraction_echec: 'L’extraction des mémoires a échoué (écrans à rejouer)',
   extraction_bloquee: 'L’extraction des mémoires est restée bloquée (écrans figés)',
   // OBS-SERVEUR (15-10-2026) : appels amont, photos, dictée.
