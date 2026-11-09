@@ -109,7 +109,7 @@ const LIBELLE_CODE = {
   ecriture_echec: 'Échec d’enregistrement',
   tts_fallback_correction: 'Voix de secours pendant une correction',
   client_event: 'Événements du carnet de l’app',
-  quiz_repli_simple: 'Un quiz servi sans validation',
+  quiz_repli_simple: 'Un quiz servi en repli, plus court que prévu',
   dictee_echec: 'Une dictée finie en échec',
   cron_echec: 'Une exécution de l’automate a échoué',
   cron_executions: 'Exécutions de l’automate (toutes réussies)',
