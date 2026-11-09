@@ -18,6 +18,7 @@
 import { construireHash } from '../router.js';
 import { detailEnTexte, serialiserDetail } from '../ui/detail.js';
 import { carteDictee } from '../ui/dictee.js';
+import { lignesDeroule, placerDeroule, resumeDeroule } from '../ui/deroule.js';
 import { filChronologique } from '../ui/fil-seance.js';
 import { el, etatErreur, lien, repliable, tableau } from '../ui/dom.js';
 import { estAnnulation } from '../api.js';
@@ -93,7 +94,9 @@ export async function rendre({ route, api, signal }) {
   const contexte = { route, api, prenom: seance.childName, photos, voix };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
   corps.append(el('h2', 'section-title', 'Mot à mot'));
-  corps.append(filSeance(seance.ecrans, cartes, contexte));
+  // DEROULE-COMPLET : le déroulé de chaque tour, replié, dans le fil.
+  const deroule = placerDeroule(seance.deroule);
+  corps.append(filSeance(seance.ecrans, [...cartes, ...deroule.extras], { ...contexte, deroule: deroule.parInteraction }));
   corps.append(voix.autres);
   chargerPhotos(seance, contexte, signal);
   if (voix.parInteraction.size) remplirVoix(voix, () => api.voixSeance(route.env, seance.id, { signal }));
@@ -180,7 +183,7 @@ function carteEcran(ecran, contexte) {
 // Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
 // chaque changement d'écran (« de retour » s'il a déjà paru). Les
 // cartes quiz (sans écran) se glissent à leur heure.
-function filSeance(ecrans, cartes, { route, prenom, photos, voix }) {
+function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
   const bloc = el('section', 'fil-seance');
   const elements = filChronologique(ecrans, cartes);
   if (!elements.length) {
@@ -189,12 +192,16 @@ function filSeance(ecrans, cartes, { route, prenom, photos, voix }) {
   }
   const fil = el('ol', 'bulles');
   for (const { ecran, interaction: i, retour, extra } of elements) {
-    if (extra) fil.append(ligneCarteQuiz(extra));
+    if (extra?.deroule) fil.append(ligneDeroule(extra.deroule));
+    else if (extra) fil.append(ligneCarteQuiz(extra));
     else if (!i) {
       const intertitre = el('li', 'fil-intertitre');
       intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(ecran) + (retour ? ' · de retour' : '')));
       fil.append(intertitre);
-    } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') fil.append(bulle(i, { route, prenom, photos, voix }));
+    } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') {
+      if (i.locuteur === 'ari' && deroule?.has(i.id)) fil.append(ligneDeroule(deroule.get(i.id)));
+      fil.append(bulle(i, { route, prenom, photos, voix }));
+    }
     else fil.append(ligneSysteme(i));
   }
   bloc.append(fil);
@@ -232,6 +239,21 @@ function bulle(i, { route, prenom, photos, voix }) {
   }
   if (ari && i.modele) actions.append(el('span', 'cell-note mono', i.modele));
   if (actions.childNodes.length) item.append(actions);
+  return item;
+}
+
+// DEROULE-COMPLET : le déroulé d'un tour, replié par défaut. Que des
+// codes et des libellés de l'app ; textContent quand même (journal).
+function ligneDeroule(t) {
+  const item = el('li', 'fil-deroule');
+  const details = el('details', 'deroule');
+  const resume = el('summary', 'deroule-resume');
+  if (t.debutAt) resume.append(el('span', 'bulle-heure', heureParis(t.debutAt) || ''));
+  resume.append(el('span', null, resumeDeroule(t)));
+  const liste = el('dl', 'deroule-lignes');
+  for (const [cle, valeur] of lignesDeroule(t)) liste.append(el('dt', null, cle), el('dd', 'mono', valeur));
+  details.append(resume, liste);
+  item.append(details);
   return item;
 }
 

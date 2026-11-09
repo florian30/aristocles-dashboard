@@ -80,8 +80,11 @@ const LIBELLE_CODE = {
   relance_echouee: 'Le second lecteur a raté aussi',
   repli_premiere_tentative: 'Texte de secours servi',
   texte_bloque_remplace: 'Texte bloqué, remplacé par un texte de secours',
+  ajout_a_confirmer_parade: 'Ajout de devoir à confirmer : phrase de secours servie',
   relance_reussie: 'Le second lecteur a sauvé la page',
   relance_abandonnee: '1re réponse écartée, relance faite',
+  // VEILLE-USAGE-FLUSH (24-10-2026).
+  relance_carte_servie: 'Réponse sur la carte reprise et servie (voulu)',
   content_filter: 'Le fournisseur a refusé le contenu (filtre)',
   delai_depasse: 'Le fournisseur a mis trop longtemps',
   amont_5xx: 'Le fournisseur est tombé (erreur 5xx)',
@@ -101,6 +104,7 @@ const LIBELLE_CODE = {
   'tour_anomalie:echec_llm': 'Tour sans réponse de l’IA',
   quota_atteint: 'Plafond du jour atteint, Ari « fatigué » (voulu)',
   'tour_erreur:doublon': 'Même tour sans réponse de l’IA (déjà compté)',
+  'tour_erreur:micro_refuse': 'Micro refusé par le parent (pas une panne)',
   'filet_echec_llm:doublon': 'Filet du même tour (déjà compté)',
   ecriture_echec: 'Échec d’enregistrement',
   tts_fallback_correction: 'Voix de secours pendant une correction',
@@ -137,6 +141,7 @@ const LIBELLE_CODE = {
   config_absente: 'Une clé de service manque au serveur',
   base_echec: 'La base de données a échoué',
   quiz_zero_question: 'Quiz non servi (aucune question utilisable)',
+  quiz_repli_non_relu: 'Un quiz servi avec des questions jamais relues',
   exception: 'Plantage imprévu de la fonction',
   // OBS-SEANCE 5a (16-10-2026) : pannes de séance tracées par l'app.
   exercice_selection: 'Le choix de l’exercice a échoué',
@@ -149,6 +154,9 @@ const LIBELLE_CODE = {
   quiz_en_avance_echec: 'Le quiz préparé à l’avance a échoué',
   quiz_pas_pret: 'L’enfant a dit oui, le quiz n’était pas prêt',
   quiz_lecture_echec: 'La lecture des quiz du devoir a échoué',
+  lecture_devoir_en_file: 'Lecture de devoir mise en file (une autre était en cours)',
+  lecture_devoir_attente_file: 'Lecture de devoir : file lente (≥ 3 s)',
+  lecture_devoir_perimee: 'Lecture de devoir revenue trop tard (ignorée)',
 };
 
 // Cause d'une dictée en échec (`dictee_echec_<cause>`, liste fermée de

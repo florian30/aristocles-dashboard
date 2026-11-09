@@ -751,6 +751,14 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .fil-systeme-meta { font-size: 11px; color: var(--ink-placeholder); }
 .fil-systeme.is-quiz { color: var(--ink); font-weight: 500; }
 .fil-seance { border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; }
+/* DEROULE-COMPLET : le déroulé d'un tour, replié, dans le fil. */
+.fil-deroule { align-self: stretch; font-size: 12px; color: var(--ink-soft); }
+.deroule { border: 1px dashed var(--border); border-radius: 10px; padding: 4px 10px; }
+.deroule-resume { cursor: pointer; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.deroule-resume .bulle-heure { margin: 0; padding: 0; }
+.deroule-lignes { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 6px 0 2px; }
+.deroule-lignes dt { color: var(--ink-placeholder); }
+.deroule-lignes dd { margin: 0; color: var(--ink); }
 /* Changement d'écran dans le fil : repère léger, pas une carte. */
 .fil-intertitre {
   display: flex; align-items: center; gap: 10px; margin: 10px 0 2px;
