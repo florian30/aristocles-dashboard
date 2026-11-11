@@ -30,7 +30,7 @@ function wavMuet() {
   for (const b of octets) bin += String.fromCharCode(b);
   return 'data:audio/wav;base64,' + btoa(bin);
 }
-const AUDIO = wavMuet();
+export const AUDIO = wavMuet();
 
 const plus = (iso, s) => new Date(Date.parse(iso) + s * 1000).toISOString();
 
