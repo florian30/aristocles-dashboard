@@ -3,7 +3,8 @@
    puis, sur la période choisie (≤ 92 jours, 92 par défaut) :
    séances (sans échange masquées sauf `sans_echange=1`), photos de
    devoirs en miniatures par séance, maîtrise par notion
-   (état courant), devoirs, dictées, bilans et conversations parent,
+   (état courant), devoirs, dictées, questions à Ari (un jour à la
+   fois, hors période : ui/questions-ari.js), bilans et conversations parent,
    mémoire, écrans consultés, versions d'app.
    Tout contenu serveur (messages parent, sorties IA) passe par
    textContent.
@@ -29,6 +30,7 @@ import { fmtInstantParis, fmtJourCourt, jourParis } from '../ui/paris.js';
 import { periodeDepuisQuery } from '../ui/periode.js';
 import { estAnnulation } from '../api.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { sectionQuestionsAri } from '../ui/questions-ari.js';
 import { avecSansEchange, bandeauSansEchange, puceSansEchange } from '../ui/sans-echange.js';
 import { etoiles } from './familles.js';
 
@@ -61,6 +63,8 @@ export async function rendre({ route, api, signal }) {
     section('Devoirs', fiche.devoirs.length, listeDevoirs(fiche.devoirs, env)),
     section('Dictées', fiche.dictees.length, blocDictees(fiche.dictees, env),
       'Chaque passage de dictée ouvre une séance en mode Dictée ; le compteur de séances de Familles ne les compte pas.'),
+    section('Questions à Ari', null, sectionQuestionsAri({ api, route, prenom: id.prenom, signal }),
+      'Le mot à mot de « Pose-moi des questions », un jour à la fois (hier par défaut, hors période). La voix de la question est gardée 30 jours. Jamais montré aux parents.'),
     section('Bilans parent', fiche.bilans.length, listeBilans(fiche.bilans)),
     section('Conversations parent', fiche.conversationsParent.length, listeConversations(fiche.conversationsParent, id.prenom)),
     section('Mémoire', null, blocMemoire(fiche.memoire), 'Profil extrait par l’IA au fil des séances (état courant).'),

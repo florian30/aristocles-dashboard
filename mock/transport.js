@@ -12,6 +12,7 @@ import { enfant, enfants } from './familles.js';
 import { journee } from './journee.js';
 import { photo } from './photo.js';
 import { photos_seance } from './photos_seance.js';
+import { questions_ari } from './questions_ari.js';
 import { creerRetoursMock } from './retours.js';
 import { sante } from './sante.js';
 import { session } from './session.js';
@@ -21,7 +22,7 @@ import { veille } from './veille.js';
 import { voix_seance } from './voix_seance.js';
 
 // `stats` n'existe plus côté front : une action inconnue répond 400.
-const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo, photos_seance, veille, voix_seance };
+const ACTIONS = { session, session_detail, journee, apercu, sante, enfants, enfant, tour, photo, photos_seance, veille, voix_seance, questions_ari };
 
 function attendre(ms, signal) {
   return new Promise((resoudre, rejeter) => {

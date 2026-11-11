@@ -31,6 +31,9 @@
    voixSeance(env, sessionId) → voir adapterVoixSeance (prises de voix de
      l'enfant, contrat v2.9 § 2.16), JAMAIS mis en cache (URLs signées
      d'1 h) ; null pour une séance inconnue
+   questionsAri(env, childId, date) → voir adapterQuestionsAri (mot à mot
+     de « Pose-moi des questions » d'un jour, contrat v2.11 § 2.17),
+     JAMAIS mis en cache (URLs signées d'1 h) ; null pour un enfant inconnu
    enfants(env, from?, to?) → voir adapterEnfants (Familles)
    enfant(env, childId, from?, to?) → voir adapterEnfant ou null
    tour(env, generationId) → voir adapterTour ou null
@@ -786,6 +789,44 @@ export function adapterVoixSeance(data) {
   };
 }
 
+// Mot à mot de « Pose-moi des questions » (GAMIF-L15, contrat v2.11
+// § 2.17). `voix` : 'ok' (url d'écoute), 'effacee' (purgée, ou « ok »
+// sans url) ou null (aucune prise retrouvée : rien n'est affirmé).
+// `reponse` null = Ari n'a pas pu répondre (phrase de secours).
+function adapterVoixQuestion(v) {
+  if (!v || typeof v !== 'object') return null;
+  const effacee = v.etat === 'purgee' || !v.url;
+  return {
+    etat: effacee ? 'effacee' : 'ok',
+    url: effacee ? null : v.url,
+    dureeS: nombreOuNull(v.duree_s),
+    priseLe: v.prise_le || null,
+  };
+}
+
+export function adapterQuestionsAri(data) {
+  return {
+    childId: data.child_id || null,
+    from: data.from || null,
+    to: data.to || null,
+    validiteS: nombreOuNull(data.validite_s),
+    expireLe: data.expire_le || null,
+    nbEchanges: Number(data.nb_echanges) || 0,
+    jours: tableau(data.jours).map((j) => ({
+      jour: j.jour || null,
+      echanges: tableau(j.echanges).map((e) => ({
+        id: e.id || null,
+        rang: e.rang ?? null,
+        poseeLe: e.posee_le || null,
+        question: typeof e.question === 'string' ? e.question : '',
+        reponse: typeof e.reponse === 'string' ? e.reponse : null,
+        promptVersion: e.prompt_version || null,
+        voix: adapterVoixQuestion(e.voix),
+      })),
+    })),
+  };
+}
+
 // Erreur de l'action `photo` → état affichable. Une photo purgée
 // (404 `photo_purgee`) est un état normal, pas une panne.
 export function etatErreurPhoto(e) {
@@ -1077,6 +1118,16 @@ export function creerApi({ transport, cache = creerCache() }) {
     async voixSeance(env, sessionId, options = {}) {
       try {
         return adapterVoixSeance(await transport(env, 'voix_seance', { session_id: sessionId }, options));
+      } catch (e) {
+        if (e.status === 404) return null;
+        throw e;
+      }
+    },
+    // Hors cache : les liens d'écoute expirent en 1 h ; un jour civil de
+    // Paris à la fois (`date`).
+    async questionsAri(env, childId, date, options = {}) {
+      try {
+        return adapterQuestionsAri(await transport(env, 'questions_ari', { child_id: childId, date }, options));
       } catch (e) {
         if (e.status === 404) return null;
         throw e;
