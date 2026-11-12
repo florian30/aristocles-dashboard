@@ -84,5 +84,34 @@ export function sante(params = {}) {
       plafond: 300,
       au_plafond: dates.includes(hier) ? [{ parent_id: '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', jour: hier, unites: 300 }] : [],
     },
+    lectures_photo: lecturesPhoto(dates, hier),
   };
+}
+
+// PHOTO-ECHEC-2 (§ 2.8, v2.12) : hier, une photo non lue rattrapée par le
+// téléphone et une lecture sauvée par le secours ; avant-hier, une photo non
+// lue que le téléphone n'a pas lue non plus.
+function lecturesPhoto(dates, hier) {
+  const ligne = (jour, parent, c, seances) => ({
+    jour,
+    parent_id: parent,
+    photos_non_lues: 0, nb_photos: 0, lues_par_secours: 0,
+    telephone_lu: 0, telephone_non_lu: 0, telephone_sans_suite: 0,
+    ...c,
+    seances,
+  });
+  const avantHier = dates[dates.indexOf(hier) - 1];
+  const par_jour = [];
+  if (dates.includes(hier)) {
+    par_jour.push(
+      ligne(hier, '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', { photos_non_lues: 1, nb_photos: 2, telephone_lu: 1 }, ['5e55a0b1-0000-4000-8000-000000000001']),
+      ligne(hier, '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', { lues_par_secours: 1 }, ['5e55a0b1-0000-4000-8000-000000000002']),
+    );
+  }
+  if (avantHier) {
+    par_jour.push(ligne(avantHier, '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', { photos_non_lues: 1, nb_photos: 1, telephone_non_lu: 1 }, ['5e55a0b1-0000-4000-8000-000000000003']));
+  }
+  const cles = ['photos_non_lues', 'nb_photos', 'lues_par_secours', 'telephone_lu', 'telephone_non_lu', 'telephone_sans_suite'];
+  const totaux = Object.fromEntries(cles.map((k) => [k, par_jour.reduce((a, j) => a + j[k], 0)]));
+  return { totaux, par_jour };
 }

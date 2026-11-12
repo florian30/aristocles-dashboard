@@ -53,6 +53,14 @@ Deno.test('adaptateur sante : exemple du contrat', () => {
   assertEquals(s.incidents.recents[0], { sessionId: '22222222-2222-2222-2222-222222222222', type: 'tour_erreur', ecranType: 'exercice', ts: '2026-07-10T22:41:00Z', detail: { tour: 1, erreur: 'TimeoutException' } });
   assertEquals(s.quotas, { plafond: 300, auPlafond: [{ parentId: '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', jour: '2026-07-10', unites: 300 }] });
   assertEquals(adapterSante({}).quotas, null);
+  // PHOTO-ECHEC-2 (v2.12)
+  assertEquals(s.lecturesPhoto.parJour, [{
+    jour: '2026-07-12', parentId: '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a',
+    nonLues: 1, nbPhotos: 2, secours: 0, telephoneLu: 1, telephoneNonLu: 0, telephoneSansSuite: 0,
+    seances: ['11111111-1111-1111-1111-111111111111'],
+  }]);
+  assertEquals(s.lecturesPhoto.totaux.nonLues, 1);
+  assertEquals(adapterSante({}).lecturesPhoto, null);
 });
 
 Deno.test('api : journee envoie la date, apercu/sante des bornes ISO de Paris', async () => {
@@ -95,4 +103,5 @@ Deno.test('mock : apercu et sante sur 92 jours', async () => {
   assert(s.erreursClient.length > 0 && s.erreursClient.every((e) => e.pile));
   assertEquals(s.incidents.parType.length, 4);
   assert(s.ia.appelsCoutInconnu > 0);
+  assert(s.lecturesPhoto.totaux.nonLues > 0 && s.lecturesPhoto.totaux.secours > 0);
 });

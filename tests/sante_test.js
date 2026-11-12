@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { fmtEchecs, fmtLatence, regrouperVersions, totalErreurs, totalIncidents, totauxPlateformes, volumesIa } from '../ui/sante.js';
+import { fmtEchecs, fmtLatence, fmtPhotosNonLues, fmtSuiteTelephone, regrouperVersions, totalErreurs, totalIncidents, totauxPlateformes, volumesIa } from '../ui/sante.js';
 import { libelleCloture } from '../ui/libelles.js';
 
 const NB = '\u00a0';
@@ -40,4 +40,13 @@ Deno.test('santé : totaux d’erreurs et d’incidents ; libellés de clôture'
   assertEquals(libelleCloture('archivee', { motif: 'menage_complet' }).label, 'Clôturée');
   assertEquals(libelleCloture('active', { soldee_at: null, motif: null }).label, 'En cours');
   assertEquals(libelleCloture('archivee', null).label, 'Non soldée');
+});
+
+Deno.test('santé : photos de devoir non lues et suite téléphone (PHOTO-ECHEC-2)', () => {
+  assertEquals(fmtPhotosNonLues(0, 0), '0');
+  assertEquals(fmtPhotosNonLues(1, 1), '1 (1 photo)');
+  assertEquals(fmtPhotosNonLues(2, 5), '2 (5 photos)');
+  assertEquals(fmtSuiteTelephone({ telephoneLu: 0, telephoneNonLu: 0, telephoneSansSuite: 0 }), '—');
+  assertEquals(fmtSuiteTelephone({ telephoneLu: 1, telephoneNonLu: 2, telephoneSansSuite: 0 }), '1 lue · 2 pas lues');
+  assertEquals(fmtSuiteTelephone({ telephoneLu: 0, telephoneNonLu: 0, telephoneSansSuite: 1 }), '1 sans suite');
 });

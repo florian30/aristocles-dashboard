@@ -335,6 +335,29 @@ export const SANTE = {
         "unites": 300
       }
     ]
+  },
+  "lectures_photo": {
+    "totaux": {
+      "photos_non_lues": 1,
+      "nb_photos": 2,
+      "lues_par_secours": 0,
+      "telephone_lu": 1,
+      "telephone_non_lu": 0,
+      "telephone_sans_suite": 0
+    },
+    "par_jour": [
+      {
+        "jour": "2026-07-12",
+        "parent_id": "0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a",
+        "photos_non_lues": 1,
+        "nb_photos": 2,
+        "lues_par_secours": 0,
+        "telephone_lu": 1,
+        "telephone_non_lu": 0,
+        "telephone_sans_suite": 0,
+        "seances": ["11111111-1111-1111-1111-111111111111"]
+      }
+    ]
   }
 };
 
