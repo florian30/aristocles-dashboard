@@ -2,17 +2,18 @@
    Santé & coûts (action `sante`) : erreurs client groupées,
    versions d'app, IA par rôle (unité réelle, latences, échecs,
    coût inconnu signalé), échecs IA récents, incidents de séance,
-   quotas au plafond. Période ≤ 92 jours civils de Paris.
+   quotas au plafond, photos de devoir non lues (PHOTO-ECHEC-2).
+   Période ≤ 92 jours civils de Paris.
    ============================================================ */
 
 import { barrePeriode } from '../ui/filtres.js';
 import { avecInternes, interrupteurInternes } from '../ui/internes.js';
-import { blocIncidents, carteCout, listeErreursClient, tableEchecsIa, tableIa, tableVersions } from '../ui/blocs.js';
+import { blocIncidents, carteCout, lienSeance, listeErreursClient, tableEchecsIa, tableIa, tableVersions } from '../ui/blocs.js';
 import { carteKpi, el, tableau } from '../ui/dom.js';
 import { fmtEntier } from '../ui/format.js';
 import { fmtJourCourt } from '../ui/paris.js';
 import { periodeDepuisQuery } from '../ui/periode.js';
-import { fmtEchecs, totalErreurs, totalIncidents } from '../ui/sante.js';
+import { fmtEchecs, fmtPhotosNonLues, fmtSuiteTelephone, totalErreurs, totalIncidents } from '../ui/sante.js';
 
 export const titre = 'Santé & coûts';
 
@@ -52,6 +53,8 @@ export async function rendre({ route, api, signal }) {
   vue.append(el('h2', 'section-title', 'Incidents de séance'), blocIncidents(s.incidents, route.env));
   if (!s.incidents.recents.length) vue.append(el('p', 'reader-empty', 'Aucun incident récent.'));
 
+  if (s.lecturesPhoto) vue.append(sectionPhotosNonLues(s.lecturesPhoto, route.env));
+
   vue.append(el('h2', 'section-title', 'Versions d’app et plateformes'), tableVersions(s.versions, { vide: 'Aucun lancement sur la période.' }));
 
   if (s.quotas) vue.append(sectionQuotas(s.quotas));
@@ -71,6 +74,54 @@ function sectionQuotas(q) {
     ],
     lignes: q.auPlafond.map((x) => [fmtJourCourt(x.jour), el('span', 'mono', x.parentId), fmtEntier(x.unites)]),
     vide: 'Aucun compte au plafond sur la période.',
+  }));
+  return section;
+}
+
+// PHOTO-ECHEC-2 : les photos de devoir que le serveur n'a pas lues, par
+// jour et par famille, avec ce qu'en a fait le téléphone ensuite.
+function sectionPhotosNonLues(lp, env) {
+  const section = el('section');
+  const t = lp.totaux;
+  section.append(el('h2', 'section-title', 'Photos de devoir non lues'), el('p', 'bloc-explication',
+    'Photo non lue : aucun lecteur du serveur n’a rendu la photo, l’app a fait lire la page par le téléphone. ' +
+    'Lue par le secours : la photo a été rattrapée en relisant les recopies page par page. ' +
+    'Téléphone : ce que la lecture sur le téléphone a donné ensuite.'));
+  if (t.nonLues || t.secours) {
+    section.append(el('p', 'bloc-explication',
+      'Sur la période : ' + fmtPhotosNonLues(t.nonLues, t.nbPhotos) + ' non lue' + (t.nonLues > 1 ? 's' : '') +
+      ' · ' + fmtEntier(t.secours) + ' lue' + (t.secours > 1 ? 's' : '') + ' par le secours' +
+      ' · téléphone : ' + fmtSuiteTelephone(t) + '.'));
+  }
+  section.append(tableau({
+    classe: 'photos-non-lues-table',
+    colonnes: [
+      { titre: 'Jour', largeur: '120px' },
+      { titre: 'Famille (parent)' },
+      { titre: 'Photo non lue', classe: 'cell-right', largeur: '130px' },
+      { titre: 'Lue par le secours', classe: 'cell-right', largeur: '140px' },
+      { titre: 'Téléphone' },
+      { titre: 'Séances' },
+    ],
+    lignes: lp.parJour.map((j) => {
+      const seances = el('span');
+      j.seances.forEach((id, i) => {
+        if (i) seances.append(' ');
+        seances.append(lienSeance(env, id, id.slice(0, 8), 'mono'));
+      });
+      return {
+        classe: j.nonLues ? 'is-alerte' : '',
+        cellules: [
+          fmtJourCourt(j.jour),
+          el('span', 'mono', j.parentId || 'inconnu'),
+          fmtPhotosNonLues(j.nonLues, j.nbPhotos),
+          fmtEntier(j.secours),
+          fmtSuiteTelephone(j),
+          j.seances.length ? seances : '—',
+        ],
+      };
+    }),
+    vide: 'Aucune photo non lue sur la période.',
   }));
   return section;
 }

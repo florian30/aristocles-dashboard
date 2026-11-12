@@ -578,6 +578,33 @@ export function adapterSante(data) {
         auPlafond: tableau(data.quotas.au_plafond).map((q) => ({ parentId: q.parent_id, jour: q.jour, unites: q.unites })),
       }
       : null,
+    lecturesPhoto: adapterLecturesPhoto(data.lectures_photo),
+  };
+}
+
+// PHOTO-ECHEC-2 (contrat v2.12, § 2.8) : photos de devoir non lues, par
+// jour de Paris × famille. `null` si l'Edge d'un env est d'avant.
+function adapterComptesPhoto(c) {
+  return {
+    nonLues: c?.photos_non_lues || 0,
+    nbPhotos: c?.nb_photos || 0,
+    secours: c?.lues_par_secours || 0,
+    telephoneLu: c?.telephone_lu || 0,
+    telephoneNonLu: c?.telephone_non_lu || 0,
+    telephoneSansSuite: c?.telephone_sans_suite || 0,
+  };
+}
+
+export function adapterLecturesPhoto(lp) {
+  if (!lp || typeof lp !== 'object') return null;
+  return {
+    totaux: adapterComptesPhoto(lp.totaux),
+    parJour: tableau(lp.par_jour).map((j) => ({
+      jour: j.jour,
+      parentId: j.parent_id || null,
+      ...adapterComptesPhoto(j),
+      seances: tableau(j.seances),
+    })),
   };
 }
 

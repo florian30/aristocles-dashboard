@@ -814,6 +814,8 @@ a.day-arrow:hover { background: var(--surface-raised); }
 /* Séances sans échange (lot SÉANCES) */
 .bandeau-sans-echange, .mention-sans-echange { margin: 0 0 12px; font-size: 13px; color: var(--ink-soft); }
 .table-row.is-sans-echange > * { color: var(--ink-placeholder); }
+/* PHOTO-ECHEC-2 : une photo non lue se voit dans la ligne. */
+.photos-non-lues-table .table-row.is-alerte > :nth-child(3) { color: var(--error); font-weight: 600; }
 .chip-sans-echange { margin-left: 6px; }
 
 /* Trace IA */

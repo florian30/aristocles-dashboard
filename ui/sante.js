@@ -80,3 +80,19 @@ export function totalIncidents(incidents) {
 export function totalErreurs(erreurs) {
   return (erreurs || []).reduce((acc, e) => acc + (e.nb || 0), 0);
 }
+
+// PHOTO-ECHEC-2 : « 2 (5 photos) » ; « 0 » sans photo non lue.
+export function fmtPhotosNonLues(nonLues, nbPhotos) {
+  if (!nonLues) return '0';
+  return fmtEntier(nonLues) + ' (' + fmtEntier(nbPhotos) + (nbPhotos > 1 ? ' photos)' : ' photo)');
+}
+
+// Suite côté téléphone des photos non lues : « 1 lue · 1 pas lue », zéros
+// omis ; « — » s'il n'y a rien.
+export function fmtSuiteTelephone({ telephoneLu, telephoneNonLu, telephoneSansSuite }) {
+  const morceaux = [];
+  if (telephoneLu) morceaux.push(fmtEntier(telephoneLu) + ' lue' + (telephoneLu > 1 ? 's' : ''));
+  if (telephoneNonLu) morceaux.push(fmtEntier(telephoneNonLu) + ' pas lue' + (telephoneNonLu > 1 ? 's' : ''));
+  if (telephoneSansSuite) morceaux.push(fmtEntier(telephoneSansSuite) + ' sans suite');
+  return morceaux.length ? morceaux.join(' · ') : '—';
+}
