@@ -5,6 +5,7 @@ import { adapterApercu, adapterApercuDictees, adapterDictee, adapterEnfant, adap
 import { creerApi } from '../api.js';
 import { transportMock } from '../mock/transport.js';
 import { carteDictee, etapeDictee, ligneFaute, partDictee, resumeFautes, resumeJournal } from '../ui/dictee.js';
+import { boutonPhotoUrl, nomFichierDictee } from '../ui/photo.js';
 import { decalerJour, hierParis } from '../ui/paris.js';
 import { APERCU, ENFANT, JOURNEE } from './contrat_v2_exemples.js';
 
@@ -191,3 +192,58 @@ function texteCarteFautes(brute) {
   globalThis.document = { createElement: (tag) => new Noeud(tag) };
   try { return carteDictee(adapterDictee(brute), { env: 'prod' }).textContent; } finally { globalThis.document = avant; }
 }
+
+// ---- Lot 43 : télécharger la photo d'une dictée (URL d'affichage déjà signée).
+function domBouton(f) {
+  class Noeud {
+    constructor(tag) { this.tag = tag; this.enfants = []; this.className = ''; this._texte = ''; this.ecouteurs = {};
+      this.classList = { add: (c) => { this.className += ' ' + c; } }; }
+    append(...n) { for (const x of n) this.enfants.push(typeof x === 'string' ? { textContent: x } : x); }
+    set textContent(t) { this._texte = String(t); this.enfants = []; }
+    get textContent() { return this._texte + this.enfants.map((e) => e.textContent).join(''); }
+    setAttribute() {}
+    addEventListener(t, fn) { this.ecouteurs[t] = fn; }
+    click() { return this.ecouteurs.click?.(); }
+    remove() {}
+  }
+  const telechargements = [];
+  const avant = globalThis.document;
+  globalThis.document = {
+    createElement: (tag) => { const n = new Noeud(tag); if (tag === 'a') n.click = () => telechargements.push([n.href, n.download]); return n; },
+    body: new Noeud('body'),
+  };
+  return Promise.resolve(f(telechargements)).finally(() => { globalThis.document = avant; });
+}
+
+Deno.test('photo de dictée : nom de fichier dictee-<jour>-p<n>.jpg', () => {
+  assertEquals(nomFichierDictee({ priseLe: '2026-10-13T17:15:00Z', rang: 2 }), 'dictee-2026-10-13-p2.jpg');
+  assertEquals(nomFichierDictee({ priseLe: null, rang: null }), 'dictee-p1.jpg');
+});
+
+Deno.test('photo de dictée : le bouton lit l’URL en blob puis déclenche un lien download', () => domBouton(async (telechargements) => {
+  const appels = [];
+  const bloc = boutonPhotoUrl({ url: 'https://exemple.test/copie.jpg', nomFichier: 'dictee-2026-10-13-p1.jpg',
+    chercher: (u) => { appels.push(u); return Promise.resolve(new Response(new Blob(['x']), { status: 200 })); } });
+  const [bouton, etat] = bloc.enfants;
+  await bouton.click();
+  assertEquals(appels, ['https://exemple.test/copie.jpg']);
+  assertEquals(telechargements.length, 1);
+  assert(telechargements[0][0].startsWith('blob:'));
+  assertEquals(telechargements[0][1], 'dictee-2026-10-13-p1.jpg');
+  assertEquals(etat.textContent, 'Téléchargée : dictee-2026-10-13-p1.jpg');
+  assertEquals(bouton.textContent, 'Télécharger');
+}));
+
+Deno.test('photo de dictée : lien expiré → message, sans erreur ni téléchargement', () => domBouton(async (telechargements) => {
+  for (const chercher of [
+    () => Promise.resolve(new Response('', { status: 403 })),
+    () => Promise.reject(new TypeError('Failed to fetch')),
+  ]) {
+    const bloc = boutonPhotoUrl({ url: 'https://exemple.test/vieux.jpg', nomFichier: 'dictee-p1.jpg', chercher });
+    const [bouton, etat] = bloc.enfants;
+    await bouton.click();
+    assertEquals(etat.textContent, 'Lien expiré — fermer et rouvrir');
+    assertEquals(bouton.disabled, false);
+  }
+  assertEquals(telechargements.length, 0);
+}));
