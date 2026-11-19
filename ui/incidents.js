@@ -85,6 +85,8 @@ const LIBELLE_CODE = {
   relance_abandonnee: '1re réponse écartée, relance faite',
   // VEILLE-USAGE-FLUSH (24-10-2026).
   relance_carte_servie: 'Réponse sur la carte reprise et servie (voulu)',
+  // VEILLE-SUITES (19-11-2026).
+  meta_parole_servie: 'Réponse reprise après une méta-parole, et servie (voulu)',
   content_filter: 'Le fournisseur a refusé le contenu (filtre)',
   delai_depasse: 'Le fournisseur a mis trop longtemps',
   amont_5xx: 'Le fournisseur est tombé (erreur 5xx)',
@@ -105,6 +107,8 @@ const LIBELLE_CODE = {
   quota_atteint: 'Plafond du jour atteint, Ari « fatigué » (voulu)',
   'tour_erreur:doublon': 'Même tour sans réponse de l’IA (déjà compté)',
   'tour_erreur:micro_refuse': 'Micro refusé par le parent (pas une panne)',
+  // VEILLE-FAUX-F1 (19-11-2026).
+  'tour_erreur:voix_interrompue': 'Voix coupée : l’enfant est passé à la suite (pas une panne)',
   'filet_echec_llm:doublon': 'Filet du même tour (déjà compté)',
   ecriture_echec: 'Échec d’enregistrement',
   tts_fallback_correction: 'Voix de secours pendant une correction',
