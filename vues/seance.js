@@ -11,6 +11,9 @@
    acquisitions. Quiz de leçon (DASH-QUIZ, ui/quiz.js) : questions
    marquées, verdicts et carte « Un petit quiz ? » lisibles dans le
    fil, résumé dans l'en-tête et sur la carte de l'écran.
+   Réponses de l'enfant (DASH-REPONSES-UI, ui/reponses.js) : un encart
+   par exercice et par question de quizz, posé dans le fil après sa
+   résolution (énoncé, type, résultat, tentatives).
    Le mot à mot et les sorties IA sont du contenu non fiable :
    toujours en textContent.
    ============================================================ */
@@ -37,6 +40,7 @@ import {
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
 import { remplirVoix } from '../ui/voix.js';
+import { derniersToursParEcran, encartReponse, placerReponses } from '../ui/reponses.js';
 import { cartesQuiz, prefixeQuestion, questionQuiz, resumeQuiz, texteCarte, texteVerdict } from '../ui/quiz.js';
 
 export const titre = 'Séance';
@@ -191,7 +195,11 @@ function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
     return bloc;
   }
   const fil = el('ol', 'bulles');
-  for (const { ecran, interaction: i, retour, extra } of elements) {
+  // DASH-REPONSES-UI : encarts après leur repère, ou en fin d'écran.
+  const reponses = placerReponses(ecrans);
+  const derniers = derniersToursParEcran(elements);
+  const finEcranApres = new Map([...derniers].map(([ecran, k]) => [k, ecran]));
+  elements.forEach(({ ecran, interaction: i, retour, extra }, k) => {
     if (extra?.deroule) fil.append(ligneDeroule(extra.deroule));
     else if (extra) fil.append(ligneCarteQuiz(extra));
     else if (!i) {
@@ -203,6 +211,13 @@ function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
       fil.append(bulle(i, { route, prenom, photos, voix }));
     }
     else fil.append(ligneSysteme(i));
+    if (i?.id) for (const r of reponses.apres.get(i.id) || []) fil.append(encartReponse(r));
+    const ecranFini = finEcranApres.get(k);
+    if (ecranFini) for (const r of reponses.finEcran.get(ecranFini) || []) fil.append(encartReponse(r));
+  });
+  // Écran sans aucun tour dans le fil : ses encarts ferment le fil.
+  for (const [ecran, liste] of reponses.finEcran) {
+    if (!derniers.has(ecran)) for (const r of liste) fil.append(encartReponse(r));
   }
   bloc.append(fil);
   return bloc;
