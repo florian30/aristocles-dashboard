@@ -90,6 +90,8 @@ Deno.test('incidents : libellés d’OBS-SEANCE, d’erreur_client et des dicté
 });
 
 Deno.test('incidents : libellés produit, code brut gardé, code inconnu affiché tel quel', () => {
+  assertEquals(libelleCode('meta_parole_servie'), { libelle: 'Réponse reprise après une méta-parole, et servie (voulu)', brut: 'meta_parole_servie' });
+  assertEquals(libelleCode('tour_erreur:voix_interrompue'), { libelle: 'Voix coupée : l’enfant est passé à la suite (pas une panne)', brut: 'tour_erreur:voix_interrompue' });
   assertEquals(libelleCode('content_filter'), { libelle: 'Le fournisseur a refusé le contenu (filtre)', brut: 'content_filter' });
   assertEquals(libelleCode('erreur_client:dictee/TimeoutException').libelle, 'Plantage de l’app — dictee · TimeoutException');
   assertEquals(libelleCode('tour_anomalie:silence_long').libelle, 'Anomalie pendant un tour (silence_long)');
