@@ -412,6 +412,11 @@ export function adapterDictee(d) {
     fautesDouteuses: Array.isArray(d.fautes_douteuses)
       ? d.fautes_douteuses.filter((f) => f && typeof f === 'object').map(adapterFauteDouteuse)
       : null,
+    // Lot 42 : les fautes une à une ; absent ou vide → rien d'affiché.
+    fautes: Array.isArray(d.fautes)
+      ? d.fautes.filter((f) => f && typeof f === 'object').map(adapterFauteDictee)
+          .sort((a, b) => (a.phraseIndex ?? Infinity) - (b.phraseIndex ?? Infinity) || (a.ordre ?? Infinity) - (b.ordre ?? Infinity))
+      : null,
   };
 }
 
@@ -431,6 +436,22 @@ function adapterListeDictee(d) {
     mots: Array.isArray(l.mots)
       ? l.mots.filter((m) => m && typeof m.mot === 'string').map((m) => ({ mot: m.mot, provenance: texteOuNull(m.provenance) }))
       : [],
+  };
+}
+
+function adapterFauteDictee(f) {
+  return {
+    phraseIndex: nombreFini(f.phrase_index),
+    ordre: nombreFini(f.ordre),
+    segmentReference: texteOuNull(f.segment_reference),
+    lectureProbable: texteOuNull(f.lecture_probable),
+    regleCode: texteOuNull(f.regle_code),
+    confiance: nombreFini(f.confiance),
+    verdict: texteOuNull(f.verdict),
+    comptee: f.comptee === true,
+    verifiePar: texteOuNull(f.verifie_par),
+    regleePar: texteOuNull(f.reglee_par),
+    essais: nombreFini(f.essais),
   };
 }
 

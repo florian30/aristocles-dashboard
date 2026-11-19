@@ -620,6 +620,7 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .dictee-liste-corps { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .dictee-provenance { color: var(--ink-soft); }
 .dictee-douteuses-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.dictee-fautes-liste { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .dictee-douteuse-tete { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
 .dictee-douteuse-mot { font-weight: 600; }
 .dictees-apercu { margin-top: 8px; }

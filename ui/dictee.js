@@ -148,6 +148,22 @@ export function ligneDouteuse(f) {
   return { mot: f.mot, origine, lu, issue, suite: suite.join(' · '), regle: f.regleCode };
 }
 
+const ETAT_FAUTE = {
+  trouvee_seule: { label: 'réglée seule', cls: 'is-success' },
+  avec_indice: { label: 'avec indice', cls: 'is-info' },
+  montree: { label: 'montrée', cls: 'is-fragile' },
+};
+
+// Une faute de la dictée (`dictee.fautes[]`) : ce que l'enfant a écrit, le
+// mot juste, la règle (le code tel quel : le dépôt n'a pas de dictionnaire
+// de règles) et l'état. Réglée d'abord, puis contestée, puis comptée.
+export function ligneFaute(f) {
+  const etat = ETAT_FAUTE[f.regleePar]
+    || (f.verdict === 'conteste' ? { label: 'contestée', cls: 'is-fragile' }
+      : f.comptee ? { label: 'comptée', cls: 'is-failure' } : { label: 'non comptée', cls: 'is-muted' });
+  return { ecrit: f.lectureProbable, juste: f.segmentReference, regle: f.regleCode, etat };
+}
+
 const TYPES_JOURNAL = [
   ['ouverture', 'ouverture'],
   ['etape', 'étape', 'étapes'],
@@ -212,6 +228,7 @@ export function carteDictee(d, { env = null, avecJour = false, avecLien = true }
     if (d.reglesRevues && d.reglesRevues.length) ligne.append(el('span', 'row-muted', '· règles revues :'), el('span', 'mono', d.reglesRevues.join(', ')));
     carte.append(ligne);
   }
+  if (d.classe && d.fautes && d.fautes.length) carte.append(blocFautes(d.fautes));
   const caracteristiques = d.classe ? caracteristiquesDictee(d) : '';
   if (caracteristiques) carte.append(ligneDictee('Texte', caracteristiques));
   const liste = resumeListe(d);
@@ -236,6 +253,24 @@ function ligneDictee(eyebrow, texte) {
   const ligne = el('p', 'dictee-ligne');
   ligne.append(el('span', 'eyebrow', eyebrow), el('span', null, texte));
   return ligne;
+}
+
+function blocFautes(fautes) {
+  const liste = el('ul', 'dictee-fautes-liste');
+  for (const f of fautes) {
+    const l = ligneFaute(f);
+    const li = el('li', 'dictee-faute');
+    li.append(
+      el('span', 'dictee-faute-ecrit', l.ecrit != null ? '« ' + l.ecrit + ' »' : 'écrit illisible'),
+      ' → ',
+      el('span', 'dictee-faute-juste', l.juste != null ? '« ' + l.juste + ' »' : 'mot juste inconnu'),
+      ' ',
+      el('span', 'verdict ' + l.etat.cls, l.etat.label),
+    );
+    if (l.regle) li.append(' ', el('span', 'mono', l.regle));
+    liste.append(li);
+  }
+  return liste;
 }
 
 function blocListe({ titre, groupes, note }) {
