@@ -15,6 +15,7 @@ export function session_detail(params) {
   const dictee = dicteeBrute(s);
   const ecrans = s.ecrans.map((e) => ({ e, interactions: interactionsEcran(s, e.position) }));
   const deroule = derouleFactice(s, ecrans);
+  const compteur = { n: 0 }; // exercices déjà vus (DASH-REPONSES-UI)
   return {
     session: {
       id: s.id,
@@ -49,6 +50,7 @@ export function session_detail(params) {
       })),
       premiere_activite_at: interactions.reduce((min, i) => (min && min <= i.created_at ? min : i.created_at), null),
       interactions,
+      reponses_exercices: reponsesFactices(interactions, compteur),
       dictee: dictee && dictee.ecran_id === ecranId(s, e.position)
         ? (({ session_id: _s, ...reste }) => reste)(dictee)
         : null,
@@ -99,6 +101,58 @@ function derouleFactice(s, ecrans) {
     }
   }
   return tours;
+}
+
+// DASH-REPONSES-UI (contrat v2.14) : ce que l'enfant a répondu, tiré du
+// fil factice comme le fait l'Edge. Le 1er exercice de la séance est à
+// l'oral (réponses = paroles de l'enfant), les suivants à l'écran
+// (réponse non enregistrée) ; un quizz porte les paroles qui précèdent
+// son verdict.
+function reponsesFactices(interactions, compteur) {
+  const entrees = [];
+  let paroles = [];
+  let enCours = null;
+  const parole = (i) => ({ at: i.created_at, texte: i.contenu_texte, canal: i.type === 'message_enfant_vocal' ? 'voix' : 'texte' });
+  for (const i of interactions) {
+    const m = i.metadata || {};
+    if (i.type === 'exercice_presente' && m.exercise_id) {
+      enCours = { id: m.exercise_id, enonce: i.contenu_texte, at: i.created_at };
+      paroles = [];
+    } else if (i.type === 'message_enfant_vocal' || i.type === 'message_enfant_texte') {
+      paroles.push(parole(i));
+    } else if (i.type === 'exercice_resolu' && m.exercise_id) {
+      const oral = compteur.n++ % 3 === 0;
+      const correct = m.resultat === 'succes';
+      const nb = oral ? paroles.length : correct ? 1 : 3;
+      const tentatives = oral
+        ? paroles.map((p, k) => ({ numero: k + 1, at: p.at, reponse: p.texte, canal: p.canal, correcte: k === paroles.length - 1 ? correct : null }))
+        : Array.from({ length: nb }, (_, k) => ({
+          numero: k + 1, at: k === nb - 1 ? i.created_at : null, reponse: null, canal: 'ecran',
+          correcte: k < nb - 1 ? false : correct ? true : null,
+        }));
+      entrees.push({
+        source: 'exercice', exercise_id: m.exercise_id, numero_quizz: null,
+        type_exercice: oral ? null : 'qcm', oral,
+        enonce: enCours?.id === m.exercise_id ? enCours.enonce : null,
+        presente_at: enCours?.id === m.exercise_id ? enCours.at : null, resolu_at: i.created_at,
+        resultat: m.resultat, correct, nb_tentatives: nb, reponses_enregistrees: oral,
+        tentatives, paroles_enfant: paroles,
+      });
+      enCours = null;
+      paroles = [];
+    } else if (i.type === 'reponse_quizz') {
+      const correct = m.verdict === 'juste';
+      entrees.push({
+        source: 'quizz', exercise_id: null, numero_quizz: m.numero, type_exercice: null, oral: true, enonce: null,
+        presente_at: null, resolu_at: i.created_at, resultat: m.verdict, correct,
+        nb_tentatives: (m.relances || 0) + 1, reponses_enregistrees: true,
+        tentatives: paroles.map((p, k) => ({ numero: k + 1, at: p.at, reponse: p.texte, canal: p.canal, correcte: k === paroles.length - 1 ? correct : null })),
+        paroles_enfant: paroles,
+      });
+      paroles = [];
+    }
+  }
+  return entrees;
 }
 
 function parPremiereActivite(a, b) {

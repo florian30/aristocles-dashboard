@@ -24,7 +24,7 @@
      paramètre l'ignore, celle d'après écarte les internes par défaut).
      `enfant` n'écarte pas : la fiche dit `identite.compteInterne`.
    detail(env, sessionId) → { …, resume, homework, consignes[], ecrans[]
-     (avec interactions[], dictee, premiereActiviteAt ; dans l'ordre reçu,
+     (avec interactions[], dictee, premiereActiviteAt, reponses[] ; dans l'ordre reçu,
      l'Edge les trie par 1re activité), acquisitions[], evenements[] } ou null
    photosSeance(env, sessionId) → voir adapterPhotosSeance, JAMAIS mis en
      cache (URLs signées d'1 h) ; null pour une séance inconnue
@@ -65,6 +65,7 @@ import { dateLocale, enMinutes, heureLocale } from './ui/format.js';
 import { bornesParis, heureParis } from './ui/paris.js';
 import { adapterLlm } from './ui/unites.js';
 import { adapterTourDeroule } from './ui/deroule.js';
+import { adapterReponsesExercices } from './ui/reponses.js';
 
 export class ApiError extends Error {
   constructor(message, status, donnees = null) {
@@ -219,6 +220,8 @@ export function adapterDetail(data) {
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     dictee: e.dictee ? adapterDictee(e.dictee) : null,
     premiereActiviteAt: e.premiere_activite_at || null,
+    // DASH-REPONSES-UI (contrat v2.14) : absent d'une Edge plus ancienne → [].
+    reponses: adapterReponsesExercices(e.reponses_exercices),
   }));
   return {
     id: s.id,

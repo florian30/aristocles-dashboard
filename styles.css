@@ -766,6 +766,21 @@ a.day-arrow:hover { background: var(--surface-raised); }
 .deroule-lignes { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 6px 0 2px; }
 .deroule-lignes dt { color: var(--ink-placeholder); }
 .deroule-lignes dd { margin: 0; color: var(--ink); }
+/* DASH-REPONSES-UI : ce que l'enfant a répondu, encart compact dans le fil. */
+.fil-reponse { align-self: stretch; }
+.reponse-encart { border: 1px solid var(--border); border-left: 3px solid var(--olive-light); border-radius: 10px; padding: 6px 12px 8px; background: var(--field-bg); font-size: 12.5px; }
+.reponse-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.reponse-titre { font-weight: 600; color: var(--ink-soft); }
+.reponse-resultat { font-weight: 600; }
+.reponse-enonce { margin: 2px 0 4px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.reponse-vide { margin: 2px 0 0; color: var(--ink-placeholder); font-style: italic; }
+.reponse-tentatives { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.reponse-tentative { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.reponse-tentative .bulle-heure { margin: 0; padding: 0; }
+.reponse-numero { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.reponse-texte { color: var(--ink); word-break: break-word; }
+.reponse-texte.is-empty { color: var(--ink-placeholder); font-style: italic; }
+.reponse-verdict { margin-left: auto; font-weight: 600; }
 /* Changement d'écran dans le fil : repère léger, pas une carte. */
 .fil-intertitre {
   display: flex; align-items: center; gap: 10px; margin: 10px 0 2px;
