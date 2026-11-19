@@ -106,7 +106,7 @@ Deno.test('adaptateur session_detail : dictée d’un écran et tri des interact
     // Edge sans les champs DICT-12 : tout à null, rien d'inventé.
     classe: null, etape: null, creeAt: '2026-07-10T17:15:00Z', heure: '19:15', finieAt: null, nbFautes: null, nbContestees: null, reglesRevues: null, evenements: null,
     // Edge d'avant v2.6 : ni liste, ni mots douteux, ni caractéristiques.
-    titre: null, refaitDe: null, nbPhrases: null, nbMots: null, liste: null, fautesDouteuses: null });
+    titre: null, refaitDe: null, nbPhrases: null, nbMots: null, liste: null, fautesDouteuses: null, fautes: null });
 });
 
 Deno.test('adaptateur tour : avec trace, coût connu', () => {

@@ -9,7 +9,7 @@
 
 import { estAnnulation, etatErreurPhoto } from '../api.js';
 import { el } from './dom.js';
-import { fmtInstantParis, heureParis } from './paris.js';
+import { fmtInstantParis, heureParis, jourParis } from './paris.js';
 
 // Lance le téléchargement sans quitter la page : l'URL signée est en
 // mode « téléchargement » (le serveur impose l'enregistrement).
@@ -51,6 +51,50 @@ export function boutonPhoto({ api, env, interactionId, libelle = 'Télécharger 
       etat.classList.add(code === 'purgee' ? 'is-purgee' : 'is-failure');
       bouton.textContent = code === 'purgee' ? 'Photo effacée' : libelle;
       bouton.disabled = code === 'purgee';
+    }
+  });
+  return bloc;
+}
+
+// Nom du fichier d'une page de copie de dictée : dictee-AAAA-MM-JJ-p2.jpg
+// (jour de Paris de la prise ; rang 1-based de la photo dans la séance).
+export function nomFichierDictee(p) {
+  const jour = p.priseLe ? jourParis(new Date(p.priseLe)) : null;
+  return ['dictee', jour, 'p' + (p.rang ?? 1)].filter(Boolean).join('-') + '.jpg';
+}
+
+// Photo sans `interaction_id` (copie de dictée : l'action `photo` ne la
+// connaît pas) : on télécharge l'URL signée d'affichage qu'on a déjà,
+// lue en blob pour que le navigateur l'enregistre au lieu de l'ouvrir.
+// Même gabarit et même déclencheur que boutonPhoto. `chercher` est
+// injectable pour les tests.
+export function boutonPhotoUrl({ url, nomFichier, libelle = 'Télécharger', chercher = (...a) => fetch(...a) }) {
+  const bloc = el('span', 'photo-action');
+  const bouton = el('button', 'bouton bouton-photo', libelle);
+  bouton.type = 'button';
+  const etat = el('span', 'photo-etat');
+  etat.setAttribute('role', 'status');
+  bloc.append(bouton, etat);
+
+  bouton.addEventListener('click', async () => {
+    bouton.disabled = true;
+    bouton.textContent = 'Téléchargement…';
+    etat.textContent = '';
+    etat.className = 'photo-etat';
+    let lien = null;
+    try {
+      const reponse = await chercher(url);
+      if (!reponse.ok) throw new Error('http ' + reponse.status);
+      lien = URL.createObjectURL(await reponse.blob());
+      declencherTelechargement(lien, nomFichier);
+      etat.textContent = 'Téléchargée : ' + nomFichier;
+    } catch {
+      etat.textContent = 'Lien expiré — fermer et rouvrir';
+      etat.classList.add('is-failure');
+    } finally {
+      if (lien) URL.revokeObjectURL(lien);
+      bouton.textContent = libelle;
+      bouton.disabled = false;
     }
   });
   return bloc;
@@ -158,6 +202,9 @@ export function ouvrirPhoto(p, lot) {
       api: lot.api, env: lot.env, interactionId: p.interactionId,
       libelle: p.redressee ? 'Télécharger l’original' : 'Télécharger',
     }));
+  }
+  else if (p.url) {
+    actions.append(boutonPhotoUrl({ url: p.url, nomFichier: nomFichierDictee(p), libelle: 'Télécharger' }));
   }
   const fermer = el('button', 'bouton', 'Fermer');
   fermer.type = 'button';

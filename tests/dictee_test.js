@@ -4,7 +4,8 @@ import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { adapterApercu, adapterApercuDictees, adapterDictee, adapterEnfant, adapterJournee } from '../api.js';
 import { creerApi } from '../api.js';
 import { transportMock } from '../mock/transport.js';
-import { etapeDictee, partDictee, resumeFautes, resumeJournal } from '../ui/dictee.js';
+import { carteDictee, etapeDictee, ligneFaute, partDictee, resumeFautes, resumeJournal } from '../ui/dictee.js';
+import { boutonPhotoUrl, nomFichierDictee } from '../ui/photo.js';
 import { decalerJour, hierParis } from '../ui/paris.js';
 import { APERCU, ENFANT, JOURNEE } from './contrat_v2_exemples.js';
 
@@ -137,3 +138,112 @@ Deno.test('mock : dictées fictives sur les trois écrans', async () => {
   const enfant = await api.enfant('prod', 'c1', decalerJour(to, -91), to);
   assert(enfant.dictees.length >= 2);
 });
+
+// ---- Lot 43 : liste des fautes d'une dictée (fixtures fabriquées).
+const FAUTES = [
+  { phrase_index: 1, ordre: 0, segment_reference: 'fenêtre', lecture_probable: 'fenetre', regle_code: 'accent_grave', confiance: 0.6, verdict: 'confirme', comptee: true, verifie_par: null, reglee_par: 'avec_indice', essais: 2 },
+  { phrase_index: 0, ordre: 1, segment_reference: 'rebord', lecture_probable: 'rebore', regle_code: null, confiance: 0.9, verdict: 'conteste', comptee: false, verifie_par: null, reglee_par: null, essais: 0 },
+  { phrase_index: 0, ordre: 0, segment_reference: 'gris', lecture_probable: 'grie', regle_code: 'accord_adjectif', confiance: 0.5, verdict: 'confirme', comptee: true, verifie_par: null, reglee_par: 'trouvee_seule', essais: 1 },
+  { phrase_index: 2, ordre: 0, segment_reference: 'dort', lecture_probable: 'dore', regle_code: 'verbe', confiance: 0.8, verdict: 'confirme', comptee: true, verifie_par: null, reglee_par: 'montree', essais: 3 },
+  { phrase_index: 2, ordre: 1, segment_reference: 'chat', lecture_probable: 'cha', regle_code: null, confiance: 0.8, verdict: 'confirme', comptee: true, verifie_par: null, reglee_par: null, essais: 0 },
+];
+const DICTEE_FAUTES = {
+  id: 'd-f', session_id: 's-f', origine: 'entrainement', classe: 'CE2', etape: 'fin',
+  created_at: '2026-10-13T17:15:00Z', nb_fautes_comptees: 4, nb_fautes_contestees: 1,
+};
+
+Deno.test('fautes : adaptateur — ordre de la dictée, champs camelCase', () => {
+  const d = adapterDictee({ ...DICTEE_FAUTES, fautes: FAUTES });
+  assertEquals(d.fautes.map((f) => f.segmentReference), ['gris', 'rebord', 'fenêtre', 'dort', 'chat']);
+  assertEquals(d.fautes[0], { phraseIndex: 0, ordre: 0, segmentReference: 'gris', lectureProbable: 'grie', regleCode: 'accord_adjectif',
+    confiance: 0.5, verdict: 'confirme', comptee: true, verifiePar: null, regleePar: 'trouvee_seule', essais: 1 });
+});
+
+Deno.test('fautes : absente → null, vide → [] ; la carte n’affiche rien de neuf, sans erreur', () => {
+  assertEquals(adapterDictee(DICTEE_FAUTES).fautes, null);
+  assertEquals(adapterDictee({ ...DICTEE_FAUTES, fautes: [] }).fautes, []);
+  const sans = texteCarteFautes(DICTEE_FAUTES);
+  assert(!sans.includes('» → «'));
+  assertEquals(texteCarteFautes({ ...DICTEE_FAUTES, fautes: [] }), sans);
+});
+
+Deno.test('fautes : libellés d’état et ligne rendue', () => {
+  const [seule, contestee, indice, montree, comptee] = adapterDictee({ ...DICTEE_FAUTES, fautes: FAUTES }).fautes.map(ligneFaute);
+  assertEquals(seule, { ecrit: 'grie', juste: 'gris', regle: 'accord_adjectif', etat: { label: 'réglée seule', cls: 'is-success' } });
+  assertEquals(contestee.etat.label, 'contestée');
+  assertEquals(indice.etat.label, 'avec indice');
+  assertEquals(montree.etat.label, 'montrée');
+  assertEquals(comptee.etat.label, 'comptée');
+  assertEquals(ligneFaute({ comptee: false }).etat.label, 'non comptée');
+  const texte = texteCarteFautes({ ...DICTEE_FAUTES, fautes: FAUTES });
+  assert(texte.includes('« grie » → « gris »'));
+  assert(texte.includes('accord_adjectif'));
+  assert(texte.indexOf('gris') < texte.indexOf('fenêtre'));
+});
+
+function texteCarteFautes(brute) {
+  class Noeud {
+    constructor(tag) { this.tag = tag; this.enfants = []; this.className = ''; this._texte = ''; }
+    append(...n) { for (const x of n) this.enfants.push(typeof x === 'string' ? { textContent: x } : x); }
+    set textContent(t) { this._texte = String(t); this.enfants = []; }
+    get textContent() { return this._texte + this.enfants.map((e) => e.textContent).join(''); }
+  }
+  const avant = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Noeud(tag) };
+  try { return carteDictee(adapterDictee(brute), { env: 'prod' }).textContent; } finally { globalThis.document = avant; }
+}
+
+// ---- Lot 43 : télécharger la photo d'une dictée (URL d'affichage déjà signée).
+function domBouton(f) {
+  class Noeud {
+    constructor(tag) { this.tag = tag; this.enfants = []; this.className = ''; this._texte = ''; this.ecouteurs = {};
+      this.classList = { add: (c) => { this.className += ' ' + c; } }; }
+    append(...n) { for (const x of n) this.enfants.push(typeof x === 'string' ? { textContent: x } : x); }
+    set textContent(t) { this._texte = String(t); this.enfants = []; }
+    get textContent() { return this._texte + this.enfants.map((e) => e.textContent).join(''); }
+    setAttribute() {}
+    addEventListener(t, fn) { this.ecouteurs[t] = fn; }
+    click() { return this.ecouteurs.click?.(); }
+    remove() {}
+  }
+  const telechargements = [];
+  const avant = globalThis.document;
+  globalThis.document = {
+    createElement: (tag) => { const n = new Noeud(tag); if (tag === 'a') n.click = () => telechargements.push([n.href, n.download]); return n; },
+    body: new Noeud('body'),
+  };
+  return Promise.resolve(f(telechargements)).finally(() => { globalThis.document = avant; });
+}
+
+Deno.test('photo de dictée : nom de fichier dictee-<jour>-p<n>.jpg', () => {
+  assertEquals(nomFichierDictee({ priseLe: '2026-10-13T17:15:00Z', rang: 2 }), 'dictee-2026-10-13-p2.jpg');
+  assertEquals(nomFichierDictee({ priseLe: null, rang: null }), 'dictee-p1.jpg');
+});
+
+Deno.test('photo de dictée : le bouton lit l’URL en blob puis déclenche un lien download', () => domBouton(async (telechargements) => {
+  const appels = [];
+  const bloc = boutonPhotoUrl({ url: 'https://exemple.test/copie.jpg', nomFichier: 'dictee-2026-10-13-p1.jpg',
+    chercher: (u) => { appels.push(u); return Promise.resolve(new Response(new Blob(['x']), { status: 200 })); } });
+  const [bouton, etat] = bloc.enfants;
+  await bouton.click();
+  assertEquals(appels, ['https://exemple.test/copie.jpg']);
+  assertEquals(telechargements.length, 1);
+  assert(telechargements[0][0].startsWith('blob:'));
+  assertEquals(telechargements[0][1], 'dictee-2026-10-13-p1.jpg');
+  assertEquals(etat.textContent, 'Téléchargée : dictee-2026-10-13-p1.jpg');
+  assertEquals(bouton.textContent, 'Télécharger');
+}));
+
+Deno.test('photo de dictée : lien expiré → message, sans erreur ni téléchargement', () => domBouton(async (telechargements) => {
+  for (const chercher of [
+    () => Promise.resolve(new Response('', { status: 403 })),
+    () => Promise.reject(new TypeError('Failed to fetch')),
+  ]) {
+    const bloc = boutonPhotoUrl({ url: 'https://exemple.test/vieux.jpg', nomFichier: 'dictee-p1.jpg', chercher });
+    const [bouton, etat] = bloc.enfants;
+    await bouton.click();
+    assertEquals(etat.textContent, 'Lien expiré — fermer et rouvrir');
+    assertEquals(bouton.disabled, false);
+  }
+  assertEquals(telechargements.length, 0);
+}));
