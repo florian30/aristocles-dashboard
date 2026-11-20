@@ -38,7 +38,7 @@ import {
   LIBELLE_VU_EN_CLASSE,
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
-import { libelleEcran } from '../ui/rang.js';
+import { libelleEcran, rangConsigne } from '../ui/rang.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
 import { remplirVoix } from '../ui/voix.js';
 import { derniersToursParEcran, encartReponse, placerReponses } from '../ui/reponses.js';
@@ -152,7 +152,10 @@ function carteConsignes(seance) {
 }
 
 // Devoirs : « Consigne k » pour un écran exercice (rang parmi les exercices).
-const nomEcran = (seance, ecran) => libelleEcran(seance, ecran) + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
+// Le type est omis pour une consigne (« Consigne k » dit déjà tout).
+const nomEcran = (seance, ecran) => rangConsigne(seance, ecran)
+  ? libelleEcran(seance, ecran)
+  : libelleEcran(seance, ecran) + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
 
 function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
