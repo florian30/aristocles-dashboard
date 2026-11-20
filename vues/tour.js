@@ -13,6 +13,7 @@ import { nomRole } from '../ui/blocs.js';
 import { boutonCopier, carteKpi, el, etatErreur, lien, repliable } from '../ui/dom.js';
 import { fmtEuros } from '../ui/format.js';
 import { fmtInstantParis } from '../ui/paris.js';
+import { libelleEcran } from '../ui/rang.js';
 import { fmtLatence } from '../ui/sante.js';
 import { fmtVolume } from '../ui/unites.js';
 
@@ -72,7 +73,7 @@ function replique(seance, generationId) {
     if (k < 0) continue;
     const avant = ecran.interactions.slice(0, k).reverse().find((i) => i.locuteur === 'enfant' && i.texte);
     const bloc = el('section', 'resume-card');
-    bloc.append(el('span', 'eyebrow', 'Écran ' + ecran.position));
+    bloc.append(el('span', 'eyebrow', libelleEcran(seance, ecran)));
     const fil = el('ol', 'bulles');
     if (avant) {
       const b = el('li', 'bulle is-enfant');
