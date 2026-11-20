@@ -38,6 +38,7 @@ import {
   LIBELLE_VU_EN_CLASSE,
 } from '../ui/libelles.js';
 import { fmtJourCourt, heureParis } from '../ui/paris.js';
+import { libelleEcran, rangConsigne } from '../ui/rang.js';
 import { boutonPhoto, creerLotPhotos, galeriePhotos } from '../ui/photo.js';
 import { remplirVoix } from '../ui/voix.js';
 import { derniersToursParEcran, encartReponse, placerReponses } from '../ui/reponses.js';
@@ -84,7 +85,7 @@ export async function rendre({ route, api, signal }) {
     el('p', 'resume-text' + (seance.resume ? '' : ' is-empty'), seance.resume || '—'));
   corps.append(bilan);
   if (seance.homework) corps.append(carteDevoir(seance.homework));
-  if (seance.mode === 'devoirs' && seance.consignes.length) corps.append(carteConsignes(seance.consignes));
+  if (seance.mode === 'devoirs' && seance.consignes.length) corps.append(carteConsignes(seance));
 
   // Photos : emplacements remplis quand `photos_seance` répond.
   const photos = { parInteraction: new Map(), parEcran: new Map(), tete: el('div', 'photos-seance') };
@@ -95,7 +96,7 @@ export async function rendre({ route, api, signal }) {
   // Voix : emplacements dans les bulles vocales, remplis quand
   // `voix_seance` répond ; les prises sans tour vont sous le fil.
   const voix = { parInteraction: new Map(), autres: el('div', 'voix-autres') };
-  const contexte = { route, api, prenom: seance.childName, photos, voix };
+  const contexte = { route, api, seance, prenom: seance.childName, photos, voix };
   for (const ecran of seance.ecrans) corps.append(carteEcran(ecran, contexte));
   corps.append(el('h2', 'section-title', 'Mot à mot'));
   // DEROULE-COMPLET : le déroulé de chaque tour, replié, dans le fil.
@@ -125,7 +126,8 @@ function carteDevoir(d) {
 }
 
 // DASH-4 — les consignes telles que l'enfant les a vues.
-function carteConsignes(consignes) {
+function carteConsignes(seance) {
+  const consignes = seance.consignes;
   const carte = el('section', 'consignes-card');
   carte.append(el('span', 'eyebrow', 'Consignes'));
   const liste = el('ol', 'consignes');
@@ -138,7 +140,7 @@ function carteConsignes(consignes) {
       texte.append(el(c.retiree ? 's' : 'span', null, c.texte || '(consigne sans texte)'));
     }
     const drapeaux = el('div', 'consigne-flags');
-    drapeaux.append(el('span', 'cell-note', 'Écran ' + c.position + (c.matiere ? ' · ' + c.matiere : '')));
+    drapeaux.append(el('span', 'cell-note', libelleEcran(seance, { type: 'exercice', position: c.position }) + (c.matiere ? ' · ' + c.matiere : '')));
     if (c.retiree) drapeaux.append(el('span', 'chip is-failure', 'Retirée par l’enfant'));
     if (c.corrigee) drapeaux.append(el('span', 'chip is-info', c.origine ? 'Corrigée par l’enfant' : 'Matière corrigée par l’enfant'));
     if (c.ajoutee) drapeaux.append(el('span', 'chip is-info', 'Ajoutée par l’enfant'));
@@ -149,12 +151,16 @@ function carteConsignes(consignes) {
   return carte;
 }
 
-const nomEcran = (ecran) => 'Écran ' + ecran.position + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
+// Devoirs : « Consigne k » pour un écran exercice (rang parmi les exercices).
+// Le type est omis pour une consigne (« Consigne k » dit déjà tout).
+const nomEcran = (seance, ecran) => rangConsigne(seance, ecran)
+  ? libelleEcran(seance, ecran)
+  : libelleEcran(seance, ecran) + ' · ' + (LIBELLE_TYPE_ECRAN[ecran.type] || ecran.type);
 
 function carteEcran(ecran, contexte) {
   const carte = el('section', 'ecran-card');
   const tete = el('div', 'ecran-head');
-  const titreEcran = el('span', 'ecran-title', nomEcran(ecran));
+  const titreEcran = el('span', 'ecran-title', nomEcran(contexte.seance, ecran));
   if (ecran.premiereActiviteAt) titreEcran.append(el('span', 'ecran-activite', ' · 1re activité ' + heureParis(ecran.premiereActiviteAt)));
   tete.append(titreEcran);
   const drapeaux = el('div', 'ecran-flags');
@@ -187,7 +193,7 @@ function carteEcran(ecran, contexte) {
 // Tous les écrans, dans l'ordre de l'heure ; un intertitre marque
 // chaque changement d'écran (« de retour » s'il a déjà paru). Les
 // cartes quiz (sans écran) se glissent à leur heure.
-function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
+function filSeance(ecrans, cartes, { route, seance, prenom, photos, voix, deroule }) {
   const bloc = el('section', 'fil-seance');
   const elements = filChronologique(ecrans, cartes);
   if (!elements.length) {
@@ -204,7 +210,7 @@ function filSeance(ecrans, cartes, { route, prenom, photos, voix, deroule }) {
     else if (extra) fil.append(ligneCarteQuiz(extra));
     else if (!i) {
       const intertitre = el('li', 'fil-intertitre');
-      intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(ecran) + (retour ? ' · de retour' : '')));
+      intertitre.append(el('span', 'fil-intertitre-texte', nomEcran(seance, ecran) + (retour ? ' · de retour' : '')));
       fil.append(intertitre);
     } else if (i.locuteur === 'ari' || i.locuteur === 'enfant') {
       if (i.locuteur === 'ari' && deroule?.has(i.id)) fil.append(ligneDeroule(deroule.get(i.id)));
