@@ -803,7 +803,8 @@ export function adapterPhotosSeance(data) {
     expireLe: data.expire_le || null,
     photos: tableau(data.photos).map((p) => ({
       rang: p.rang ?? null,
-      source: p.source === 'dictee' ? 'dictee' : 'devoirs',
+      // « liste » : la photo de la liste de mots d'une dictée (DASH-5).
+      source: p.source === 'dictee' || p.source === 'liste' ? p.source : 'devoirs',
       ecranId: p.ecran_id || null,
       interactionId: p.interaction_id || null,
       dicteeId: p.dictee_id || null,

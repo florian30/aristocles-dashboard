@@ -57,10 +57,11 @@ export function boutonPhoto({ api, env, interactionId, libelle = 'Télécharger 
 }
 
 // Nom du fichier d'une page de copie de dictée : dictee-AAAA-MM-JJ-p2.jpg
-// (jour de Paris de la prise ; rang 1-based de la photo dans la séance).
+// (jour de Paris de la prise ; rang 1-based de la photo dans la séance) ;
+// liste-de-mots-AAAA-MM-JJ-p1.jpg pour la photo de la liste de mots.
 export function nomFichierDictee(p) {
   const jour = p.priseLe ? jourParis(new Date(p.priseLe)) : null;
-  return ['dictee', jour, 'p' + (p.rang ?? 1)].filter(Boolean).join('-') + '.jpg';
+  return [p.source === 'liste' ? 'liste-de-mots' : 'dictee', jour, 'p' + (p.rang ?? 1)].filter(Boolean).join('-') + '.jpg';
 }
 
 // Photo sans `interaction_id` (copie de dictée : l'action `photo` ne la
@@ -129,9 +130,15 @@ export function creerLotPhotos({ api, env, sessionId, photos }) {
   return lot;
 }
 
+const LEGENDE_SOURCE = {
+  dictee: 'Copie de dictée',
+  liste: 'Photo de la liste de mots',
+  devoirs: 'Photo de devoir',
+};
+
 function legendePhoto(p) {
   return [
-    p.source === 'dictee' ? 'Copie de dictée' : 'Photo de devoir',
+    LEGENDE_SOURCE[p.source] || LEGENDE_SOURCE.devoirs,
     p.redressee ? 'redressée' : null,
     p.priseLe ? fmtInstantParis(p.priseLe) : null,
   ].filter(Boolean).join(' · ');
