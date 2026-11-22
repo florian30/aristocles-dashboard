@@ -5,7 +5,7 @@
 
 import { assertEquals } from 'jsr:@std/assert@1';
 import { adapterPhotosSeance } from '../api.js';
-import { creerLotPhotos, galeriePhotos } from '../ui/photo.js';
+import { creerLotPhotos, galeriePhotos, nomFichierDictee } from '../ui/photo.js';
 
 // Mini-DOM : el(), classList, événements, <dialog>.showModal().
 function avecMiniDom(f) {
@@ -100,5 +100,26 @@ Deno.test('photos : après un rechargement du lot, la 3e vignette ouvre la 3e co
     await lot.rafraichir();
     boutons[2].declencher('click');
     assertEquals(tous(corps.enfants.at(-1), 'photo-grande')[0].src, 'https://y/3.jpg');
+  });
+});
+
+// La photo de la liste de mots (source « liste », DASH-5) n'est pas un devoir.
+Deno.test('photos : la photo de la liste de mots garde sa source et sa légende', () => {
+  avecMiniDom((corps) => {
+    const { photos } = adapterPhotosSeance({ ...reponse, photos: [
+      { ...reponse.photos[0], source: 'liste' },
+      reponse.photos[1],
+      { ...reponse.photos[2], source: 'devoirs', interaction_id: 'i1', dictee_id: null },
+    ] });
+    assertEquals(photos.map((p) => p.source), ['liste', 'dictee', 'devoirs']);
+    const lot = creerLotPhotos({ api: {}, env: 'prod', sessionId: 's1', photos });
+    const boutons = tous(galeriePhotos(photos, lot), 'photo-miniature');
+    const legendes = boutons.map((b) => {
+      b.declencher('click');
+      return tous(corps.enfants.at(-1), 'photo-dialogue-legende')[0].textContent.split(' · ')[0];
+    });
+    assertEquals(legendes, ['Photo de la liste de mots', 'Copie de dictée', 'Photo de devoir']);
+    assertEquals(nomFichierDictee(photos[0]), 'liste-de-mots-2026-11-22-p1.jpg');
+    assertEquals(nomFichierDictee(photos[1]), 'dictee-2026-11-22-p2.jpg');
   });
 });
