@@ -104,7 +104,12 @@ export function boutonPhotoUrl({ url, nomFichier, libelle = 'Télécharger', che
 // Les URLs signées en lot valent 1 h et ne forcent pas le
 // téléchargement : elles vont dans <img>, jamais dans le hash.
 
-const clePhoto = (p) => [p.source, p.interactionId || p.dicteeId || p.ecranId, p.redressee ? 'r' : 'o'].join(':');
+// Les copies d'une même dictée n'ont pas d'interaction_id et partagent
+// leur dictee_id : l'instant de prise les distingue. Deux pages d'un même
+// envoi peuvent avoir le même instant (`{ts}_{seq}`, seq non rendu) :
+// le rang parmi les photos de même clé départage (DASH-PHOTOS-DICTEE).
+const clePhoto = (p) => [p.source, p.interactionId || p.dicteeId || p.ecranId, p.priseLe, p.redressee ? 'r' : 'o'].join(':');
+const memesCle = (photos, p) => photos.filter((x) => clePhoto(x) === clePhoto(p));
 
 // Lot de photos d'une séance, avec rafraîchissement partagé : quand une
 // miniature ne charge plus (URL expirée), on redemande le lot une fois.
@@ -153,7 +158,8 @@ export function miniaturePhoto(p, lot) {
   const legende = el('figcaption', 'photo-legende', p.redressee ? 'redressée' : (heureParis(p.priseLe) || ''));
   tuile.append(bouton, legende);
 
-  const courante = () => lot.photos.find((x) => clePhoto(x) === clePhoto(p)) || p;
+  const occurrence = Math.max(0, memesCle(lot.photos, p).indexOf(p));
+  const courante = () => memesCle(lot.photos, p)[occurrence] || p;
   bouton.addEventListener('click', () => ouvrirPhoto(courante(), lot));
   img.addEventListener('error', () => {
     if (tuile.querySelector('.photo-recharger')) return;
