@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { creerApi, estAnnulation, transportHttp } from './api.js';
-import { creerAuth, nettoyerStockageHerite } from './auth.js';
+import { connecterPuisRevenir, creerAuth, nettoyerStockageHerite } from './auth.js';
 import { estModeMock } from './config.js';
 import { transportMock } from './mock/transport.js';
 import { construireHash, ecouterHash, naviguer } from './router.js';
@@ -100,7 +100,10 @@ async function rendreRoute(route) {
   bandeauDev.hidden = !dev;
   placerBandeaux();
 
-  const session = await auth.session(route.env);
+  let session = await auth.session(route.env);
+  // Onglet neuf : demande la session aux onglets ouverts (≤ 300 ms,
+  // l'écran ne change pas pendant l'attente).
+  if (!session && await auth.reprendreSession(route.env)) session = await auth.session(route.env);
   if (!aJour()) return;
   if (!session) {
     afficherConnexion(route);
@@ -174,30 +177,8 @@ function afficherConnexion(route, message) {
     route,
     mock: MOCK,
     message,
-    surConnexion: async (email, motDePasse) => {
-      try {
-        await auth.connexion(route.env, email, motDePasse);
-      } catch (e) {
-        return e.message;
-      }
-      // Sonde : un compte connecté mais non autorisé est refusé ici,
-      // plutôt que de découvrir le 403 plus tard.
-      const hier = hierParis();
-      try {
-        await api.enfants(route.env);
-      } catch (e) {
-        if (e.status === 401 || e.status === 403) {
-          await auth.deconnexion(route.env);
-          api.viderCache(route.env);
-          return e.status === 403
-            ? 'Ce compte n’est pas autorisé sur ' + route.env + '.'
-            : 'Connexion refusée par le serveur ' + route.env + '.';
-        }
-        // Autre échec (réseau…) : la session est valide, l'écran le dira.
-      }
-      naviguer({ env: route.env, vue: 'veille', date: hier });
-      return null;
-    },
+    surConnexion: (email, motDePasse) =>
+      connecterPuisRevenir({ auth, api, route, email, motDePasse, naviguer }),
   }));
 }
 
