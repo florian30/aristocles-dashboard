@@ -1178,6 +1178,7 @@ button.day-arrow:hover:not(:disabled) { background: var(--surface-raised); }
 .reecoute-champs { display: flex; flex-direction: column; gap: 12px; max-width: 640px; margin-top: 12px; }
 .reecoute-champs[hidden] { display: none; }
 .reecoute-champs .form-input { font-size: 16px; } /* 16 px : pas de zoom sur iPhone */
+.reecoute-champs .reecoute-bon-texte { resize: none; overflow-y: auto; max-height: 70vh; } /* hauteur posée par JS */
 .reecoute-suivante { align-self: flex-start; height: 44px; }
 .reecoute-statut { margin: 8px 0 0; min-height: 18px; font-size: 13px; color: var(--ink-soft); }
 .reecoute-statut.is-enregistre { color: var(--olive-deep); font-weight: 600; }

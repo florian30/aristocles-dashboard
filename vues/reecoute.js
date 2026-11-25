@@ -483,8 +483,9 @@ class Page {
     const champs = el('div', 'reecoute-champs');
     champs.hidden = brouillon.verdict !== 'pas_ok';
     const champBon = el('label', 'form-champ');
-    const bon = el('input', 'form-input reecoute-bon-texte');
-    bon.type = 'text';
+    // Zone de texte qui grandit avec son texte (lot 120) ; une ligne au minimum.
+    const bon = el('textarea', 'form-input form-textarea reecoute-bon-texte');
+    bon.rows = 1;
     bon.maxLength = LIMITE_TEXTE;
     bon.value = brouillon.bonTexte || '';
     bon.setAttribute('autocomplete', 'off');
@@ -526,13 +527,22 @@ class Page {
       carte.statut.className = 'reecoute-statut';
       carte.statut.textContent = 'Pas OK : corrigez le texte. L’enregistrement part à la sortie du champ.';
       bon.focus();
+      ajusterHauteur(bon);
       try { bon.setSelectionRange(bon.value.length, bon.value.length); } catch (_) { /* type sans sélection */ }
     });
     const lire = () => {
       brouillon.bonTexte = bon.value;
       brouillon.commentaire = com.value;
     };
-    bon.addEventListener('input', lire);
+    bon.addEventListener('input', () => {
+      // Comme l'ancien champ d'une ligne : pas de retour à la ligne collé.
+      if (/[\r\n]/.test(bon.value)) bon.value = bon.value.replace(/\r?\n|\r/g, ' ');
+      ajusterHauteur(bon);
+      lire();
+    });
+    bon.addEventListener('focus', () => ajusterHauteur(bon));
+    // Texte pré-rempli : la hauteur se calcule une fois la carte affichée.
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => ajusterHauteur(bon));
     com.addEventListener('input', lire);
     bon.addEventListener('blur', () => { lire(); this.enregistrer(p, brouillon); });
     com.addEventListener('blur', () => { lire(); this.enregistrer(p, brouillon); });
@@ -675,6 +685,14 @@ function chipEvaluation(ev) {
 function libelleEvaluation(ev) {
   const base = LIBELLE_VERDICT[ev.verdict] || ev.verdict;
   return ev.verdict === 'ecarter' && ev.commentaire ? base + ' (' + ev.commentaire + ')' : base;
+}
+
+// Hauteur d'une zone de texte = hauteur de son texte (bordures comprises).
+// Sans effet si elle est cachée (scrollHeight 0) : on recalcule à l'affichage.
+function ajusterHauteur(t) {
+  if (!t.scrollHeight) return;
+  t.style.height = 'auto';
+  t.style.height = (t.scrollHeight + (t.offsetHeight - t.clientHeight)) + 'px';
 }
 
 function texteEnregistre(ev) {

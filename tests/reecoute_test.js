@@ -273,6 +273,14 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     const bon = ouverte().un('reecoute-bon-texte');
     assertEquals([doc.activeElement, ouverte().un('reecoute-champs').hidden], [bon, false]);
     assertEquals(await touche('o', 'INPUT'), [undefined]); // rien dans un champ
+    assertEquals(await touche('o', 'TEXTAREA'), [undefined]);
+    // Lot 120 : zone de texte d'une ligne qui grandit ; pas de retour à la ligne.
+    assertEquals([bon.tagName, bon.rows, bon.maxLength], ['TEXTAREA', 1, 2000]);
+    bon.value = 'oui\nnon';
+    await bon.emettre('input');
+    assertEquals(bon.value, 'oui non');
+    await bon.emettre('keydown', { key: 'Enter' });
+    assertEquals(doc.activeElement, ouverte().un('reecoute-commentaire'));
     bon.value = 'oui';
     await bon.emettre('input');
     await bon.emettre('blur');
