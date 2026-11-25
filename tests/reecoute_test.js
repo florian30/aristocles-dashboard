@@ -10,14 +10,14 @@ import { creerReecouteMock } from '../mock/reecoute.js';
 import { transportMock } from '../mock/transport.js';
 import { analyserHash, construireHash } from '../router.js';
 import {
-  adapterReecouteListe, compteursApres, filtresDepuisQuery, fusionnerPrises, indexInitial, indexSuivant, optionsContexte,
-  pageSuivante, paramsEvaluation, paramsListe, progression, queryDepuisFiltres, raccourci, texteReponseAttendue,
+  adapterEvaluation, adapterReecouteListe, commentaireEcarter, compteursApres, filtresDepuisQuery, fusionnerPrises, indexInitial, indexSuivant, optionsContexte,
+  pageSuivante, paramsEvaluation, paramsListe, progression, queryDepuisFiltres, raccourci, raisonDepuisCommentaire, texteReponseAttendue,
 } from '../ui/reecoute.js';
 import { EXEMPLE_REECOUTE_EVALUER, EXEMPLE_REECOUTE_LISTE } from './contrat_reecoute_exemples.js';
 
 Deno.test('reecoute : adaptateur — exemple du contrat § 2.18', () => {
   const l = adapterReecouteListe(EXEMPLE_REECOUTE_LISTE);
-  assertEquals(l.compteurs, { total: 5, evaluees: 2, pasOk: 1 });
+  assertEquals(l.compteurs, { total: 5, evaluees: 2, pasOk: 1, ecartees: 0 }); // Edge d'avant le lot 116 : pas d'`ecartees` → 0
   assertEquals([l.nbResultats, l.page, l.parPage, l.nbPages, l.validiteS, l.expireLe], [5, 1, 2, 3, 3600, '2026-12-20T10:00:00.000Z']);
   const [a, b] = l.prises;
   assertEquals(a.priseId, '50000000-0000-4000-8000-000000000001');
@@ -39,7 +39,7 @@ Deno.test('reecoute : adaptateur — purgée, formes vides, verdict inconnu', ()
   assertEquals([l.prises[0].purgee, l.prises[0].url, l.prises[0].transcription, l.prises[0].evaluation], [true, null, '', null]);
   assertEquals([l.prises[1].purgee, l.prises[1].evaluation.bonTexte], [true, null]);
   const vide = adapterReecouteListe({});
-  assertEquals([vide.compteurs, vide.prises, vide.nbPages], [{ total: 0, evaluees: 0, pasOk: 0 }, [], 0]);
+  assertEquals([vide.compteurs, vide.prises, vide.nbPages], [{ total: 0, evaluees: 0, pasOk: 0, ecartees: 0 }, [], 0]);
 });
 
 Deno.test('api : reecouteListe jamais en cache ; reecouteEvaluer → exemple § 2.19 ; 404 propagé', async () => {
@@ -93,12 +93,38 @@ Deno.test('reecoute : grille — bon texte seulement en Pas OK et s’il corrige
   assertEquals(paramsEvaluation(prise, { verdict: 'pas_ok', bonTexte: 'x'.repeat(2500) }).bon_texte.length, 2000);
 });
 
+Deno.test('reecoute : À écarter — la raison part dans commentaire, jamais de bon texte (lot 117)', () => {
+  const prise = { priseId: 'p1', transcription: 'oui maman' };
+  assertEquals(paramsEvaluation(prise, { verdict: 'ecarter', bonTexte: 'autre chose', commentaire: 'du Pas OK', raison: 'adulte' }),
+    { prise_id: 'p1', verdict: 'ecarter', commentaire: 'adulte' });
+  assertEquals(paramsEvaluation(prise, { verdict: 'ecarter', raison: 'bruit' }).commentaire, 'bruit ou vide');
+  assertEquals(paramsEvaluation(prise, { verdict: 'ecarter', raison: 'autre', phraseAutre: '  la  télé  ' }).commentaire, 'autre : la télé');
+  assertEquals(paramsEvaluation(prise, { verdict: 'ecarter', raison: 'autre', phraseAutre: '  ' }).commentaire, 'autre');
+  assertEquals(paramsEvaluation(prise, { verdict: 'ecarter', raison: null }), { prise_id: 'p1', verdict: 'ecarter' });
+  assertEquals(commentaireEcarter('autre', 'x'.repeat(2500)).length, 2000);
+  // Relecture d'une prise déjà écartée.
+  assertEquals(raisonDepuisCommentaire('adulte'), { raison: 'adulte', phraseAutre: '' });
+  assertEquals(raisonDepuisCommentaire('bruit ou vide'), { raison: 'bruit', phraseAutre: '' });
+  assertEquals(raisonDepuisCommentaire('autre : la télé'), { raison: 'autre', phraseAutre: 'la télé' });
+  assertEquals(raisonDepuisCommentaire('autre'), { raison: 'autre', phraseAutre: '' });
+  assertEquals(raisonDepuisCommentaire('écrit à la main'), { raison: 'autre', phraseAutre: 'écrit à la main' });
+  assertEquals(raisonDepuisCommentaire(null), { raison: null, phraseAutre: '' });
+  // Adaptateur : `ecarter` reconnu, bon texte ignoré.
+  assertEquals(adapterEvaluation({ verdict: 'ecarter', bon_texte: 'x', commentaire: 'adulte', evalue_le: 't' }),
+    { verdict: 'ecarter', bonTexte: null, commentaire: 'adulte', evalueLe: 't' });
+  assertEquals(adapterReecouteListe({ compteurs: { total: 4, evaluees: 2, pas_ok: 0, ecartees: 1 } }).compteurs, { total: 4, evaluees: 2, pasOk: 0, ecartees: 1 });
+});
+
 Deno.test('reecoute : compteurs et barre après une évaluation', () => {
   const c = { total: 10, evaluees: 2, pasOk: 1 };
-  assertEquals(compteursApres(c, null, 'ok'), { total: 10, evaluees: 3, pasOk: 1 });
-  assertEquals(compteursApres(c, null, 'pas_ok'), { total: 10, evaluees: 3, pasOk: 2 });
-  assertEquals(compteursApres(c, { verdict: 'pas_ok' }, 'ok'), { total: 10, evaluees: 2, pasOk: 0 });
-  assertEquals(compteursApres(c, { verdict: 'ok' }, 'pas_ok'), { total: 10, evaluees: 2, pasOk: 2 });
+  assertEquals(compteursApres(c, null, 'ok'), { total: 10, evaluees: 3, pasOk: 1, ecartees: 0 });
+  assertEquals(compteursApres(c, null, 'pas_ok'), { total: 10, evaluees: 3, pasOk: 2, ecartees: 0 });
+  assertEquals(compteursApres(c, { verdict: 'pas_ok' }, 'ok'), { total: 10, evaluees: 2, pasOk: 0, ecartees: 0 });
+  assertEquals(compteursApres(c, { verdict: 'ok' }, 'pas_ok'), { total: 10, evaluees: 2, pasOk: 2, ecartees: 0 });
+  // À écarter (lot 117) : compte dans les évaluées et à part.
+  assertEquals(compteursApres(c, null, 'ecarter'), { total: 10, evaluees: 3, pasOk: 1, ecartees: 1 });
+  assertEquals(compteursApres(c, { verdict: 'pas_ok' }, 'ecarter'), { total: 10, evaluees: 2, pasOk: 0, ecartees: 1 });
+  assertEquals(compteursApres({ ...c, ecartees: 1 }, { verdict: 'ecarter' }, 'ok'), { total: 10, evaluees: 2, pasOk: 1, ecartees: 0 });
   assertEquals([progression(c), progression({ total: 3, evaluees: 1 }), progression({ total: 0, evaluees: 0 })], [20, 33.3, 0]);
 });
 
@@ -116,7 +142,8 @@ Deno.test('reecoute : carte à ouvrir — 1re non évaluée, puis la suivante no
 
 Deno.test('reecoute : raccourcis — Espace, O, N ; rien dans un champ ni avec Ctrl/Cmd', () => {
   const t = (key, tagName = 'LI', mod = {}) => raccourci({ key, target: { tagName }, ...mod });
-  assertEquals([t(' '), t('o'), t('O'), t('n'), t('N'), t('x')], ['ecouter', 'ok', 'ok', 'pas_ok', 'pas_ok', null]);
+  assertEquals([t(' '), t('o'), t('O'), t('n'), t('N'), t('e'), t('E'), t('x')], ['ecouter', 'ok', 'ok', 'pas_ok', 'pas_ok', 'ecarter', 'ecarter', null]);
+  assertEquals([t('e', 'INPUT'), t('e', 'LI', { metaKey: true })], [null, null]);
   assertEquals([t('o', 'INPUT'), t('n', 'TEXTAREA'), t(' ', 'SELECT'), t(' ', 'BUTTON'), t(' ', 'AUDIO')], [null, null, null, null, null]);
   assertEquals([t('o', 'BUTTON'), t('o', 'LI', { metaKey: true }), t('n', 'LI', { ctrlKey: true })], ['ok', null, null]);
   assertEquals(raccourci({ key: 'o', target: { tagName: 'DIV', isContentEditable: true } }), null);
@@ -134,7 +161,7 @@ Deno.test('reecoute : réponse attendue brute → texte lisible', () => {
 Deno.test('mock : liste, filtres, évaluation gardée, erreurs du contrat ; aucune vraie voix, aucun prénom', async () => {
   const api = creerApi({ transport: transportMock({ estConnecte: () => true, estAutorise: () => true, delaiMs: 0 }) });
   const tout = await api.reecouteListe('prod', paramsListe(filtresDepuisQuery({ tout: '1' })));
-  assertEquals(tout.compteurs, { total: 12, evaluees: 2, pasOk: 1 });
+  assertEquals(tout.compteurs, { total: 12, evaluees: 2, pasOk: 1, ecartees: 0 });
   assertEquals(tout.prises.map((p) => p.rang), [...Array(12)].map((_, k) => k + 1));
   assert(tout.prises.every((p, k) => !k || p.priseLe > tout.prises[k - 1].priseLe), 'de la plus ancienne à la plus récente');
   assert(tout.prises.every((p) => p.purgee || p.url.startsWith('data:audio/wav;base64,')), 'audio factice seulement');
@@ -161,11 +188,16 @@ Deno.test('mock : liste, filtres, évaluation gardée, erreurs du contrat ; aucu
   // Remplacement : OK efface le bon texte.
   const r2 = await api.reecouteEvaluer('prod', { prise_id: cible.priseId, verdict: 'ok', bon_texte: 'ignoré' });
   assertEquals([r2.verdict, r2.bonTexte], ['ok', null]);
+  // Écartée : bon texte ignoré, compteur `ecartees`.
+  const r3 = await api.reecouteEvaluer('prod', { prise_id: cible.priseId, verdict: 'ecarter', bon_texte: 'ignoré', commentaire: 'adulte' });
+  assertEquals([r3.verdict, r3.bonTexte, r3.commentaire], ['ecarter', null, 'adulte']);
+  const apres3 = await api.reecouteListe('prod', paramsListe(filtresDepuisQuery({})));
+  assertEquals(apres3.compteurs, { total: 12, evaluees: 3, pasOk: 1, ecartees: 1 });
 
   const m = creerReecouteMock();
   const erreur = (f) => { try { f(); } catch (e) { return [e.status, e.message]; } return null; };
   assertEquals(erreur(() => m.reecoute_evaluer({ prise_id: 'abc', verdict: 'ok' })), [400, "'prise_id' is required and must be a uuid"]);
-  assertEquals(erreur(() => m.reecoute_evaluer({ prise_id: cible.priseId, verdict: 'bof' })), [400, "'verdict' must be one of 'ok', 'pas_ok'"]);
+  assertEquals(erreur(() => m.reecoute_evaluer({ prise_id: cible.priseId, verdict: 'bof' })), [400, "'verdict' must be one of 'ok', 'pas_ok', 'ecarter'"]);
   assertEquals(erreur(() => m.reecoute_evaluer({ prise_id: cible.priseId, verdict: 'ok', commentaire: 'x'.repeat(2001) })), [400, "'commentaire' must be a string of at most 2000 characters"]);
   assertEquals(erreur(() => m.reecoute_evaluer({ prise_id: '50000000-0000-4000-8000-999999999999', verdict: 'ok' })), [404, 'Unknown prise_id']);
   assertEquals(erreur(() => m.reecoute_liste({ mode: 'peinture' }))[0], 400);
@@ -216,7 +248,7 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     const vue = await rendre({ route: { env: 'prod', vue: 'reecoute', query: {} }, api, signal: new AbortController().signal });
     const ouverte = () => vue.un('is-open');
     const chiffres = () => vue.tous((e) => e.classList.contains('reecoute-chiffre-valeur')).map((e) => e.textContent).join('/');
-    assertEquals(chiffres(), '12/2/1');
+    assertEquals(chiffres(), '12/2/1/0');
     assertEquals(vue.tous((e) => e.classList.contains('reecoute-carte')).length, 10);
     // 1re non évaluée = 2e prise du mock, avec exercice et réponse attendue.
     assertEquals(ouverte().un('reecoute-transcription').textContent, 'soixante trois');
@@ -231,7 +263,7 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     assertEquals(ouverte().tous((e) => e.tagName === 'AUDIO')[0].paused, false);
     await touche('o');
     await attendre();
-    assertEquals(chiffres(), '12/3/1');
+    assertEquals(chiffres(), '12/3/1/0');
     assert(vue.un('reecoute-annonce').textContent.includes('enregistrée : OK'));
     // Carte suivante : la prise filtrée « silence », texte vide.
     assertEquals(ouverte().un('reecoute-transcription').textContent, '(aucun texte rendu)');
@@ -245,7 +277,7 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     await bon.emettre('input');
     await bon.emettre('blur');
     await attendre();
-    assertEquals(chiffres(), '12/4/2');
+    assertEquals(chiffres(), '12/4/2/0');
     assert(ouverte().un('reecoute-statut').textContent.startsWith('Enregistré · Pas OK'));
     const com = ouverte().un('reecoute-commentaire');
     com.value = 'silence mal filtré';
@@ -253,7 +285,7 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     await com.emettre('keydown', { key: 'Enter' });
     await attendre();
     // Entrée dans le commentaire : enregistré (même prise, pas de double compte), puis suivante.
-    assertEquals(chiffres(), '12/4/2');
+    assertEquals(chiffres(), '12/4/2/0');
     assertEquals(ouverte().un('reecoute-transcription').textContent, 'le rône');
 
     const toutes = await api.reecouteListe('prod', paramsListe(filtresDepuisQuery({ tout: '1' })));
@@ -262,6 +294,38 @@ Deno.test('vue Réécoute : 1re non évaluée ouverte, O enregistre et ouvre la 
     assertEquals([silence.evaluation.bonTexte, silence.evaluation.commentaire], ['oui', 'silence mal filtré']);
     const resumes = vue.tous((e) => e.classList.contains('reecoute-resume')).map((e) => e.textContent);
     assert(resumes.some((t) => t.startsWith('#1') && t.endsWith('OK')) && resumes.some((t) => t.startsWith('#2') && t.endsWith('Pas OK')));
+
+    // E : « À écarter » ouvre les raisons ; rien ne part sans raison.
+    assertEquals(ouverte().un('reecoute-raisons').hidden, true);
+    await touche('e');
+    assertEquals(ouverte().un('reecoute-raisons').hidden, false);
+    assertEquals(ouverte().un('reecoute-ecarter').getAttribute('aria-pressed'), 'true');
+    assertEquals(doc.activeElement.dataset.raison, 'adulte');
+    assertEquals(chiffres(), '12/4/2/0');
+    // « adulte » : enregistré tout de suite, compté à part, carte suivante.
+    await doc.activeElement.click();
+    await attendre();
+    assertEquals(chiffres(), '12/5/2/1');
+    assert(vue.un('reecoute-annonce').textContent.includes('enregistrée : Écartée (adulte)'));
+    assertEquals(ouverte().un('reecoute-transcription').textContent, 'non c’est avec deux l');
+    // « autre » : champ libre, Entrée enregistre la phrase et passe à la suivante.
+    await touche('e');
+    const autreBouton = ouverte().tous((e) => e.dataset?.raison === 'autre')[0];
+    await autreBouton.click();
+    await attendre();
+    const phrase = ouverte().un('reecoute-phrase-autre');
+    assertEquals([doc.activeElement, ouverte().un('reecoute-autre').hidden], [phrase, false]);
+    assertEquals(chiffres(), '12/6/2/2');
+    phrase.value = 'la télé derrière';
+    await phrase.emettre('input');
+    await phrase.emettre('keydown', { key: 'Enter' });
+    await attendre();
+    assertEquals(chiffres(), '12/6/2/2');
+    const apres = await api.reecouteListe('prod', paramsListe(filtresDepuisQuery({ tout: '1' })));
+    const ecartees = apres.prises.filter((p) => p.evaluation?.verdict === 'ecarter').map((p) => [p.transcription, p.evaluation.commentaire, p.evaluation.bonTexte]);
+    assertEquals(ecartees, [['le rône', 'adulte', null], ['non c’est avec deux l', 'autre : la télé derrière', null]]);
+    assertEquals(apres.compteurs.ecartees, 2);
+    assert(vue.tous((e) => e.classList.contains('reecoute-resume')).some((e) => e.textContent.endsWith('Écartée')));
   } finally {
     globalThis.document = avant;
   }
