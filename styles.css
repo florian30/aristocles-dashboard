@@ -1159,7 +1159,17 @@ button.day-arrow:hover:not(:disabled) { background: var(--surface-raised); }
 .reecoute-attendue-libelle { font-weight: 600; }
 .reecoute-transcription { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
 .reecoute-lecteur { width: 100%; max-width: 520px; height: 40px; }
-.reecoute-verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 520px; }
+.reecoute-verdicts { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 12px; max-width: 640px; }
+/* « À écarter » (lot 117) : plus petit et neutre, pour ne pas le prendre pour un verdict. */
+.reecoute-ecarter { height: 40px; padding: 0 14px; font-size: 13.5px; border-radius: 12px; color: var(--ink-soft); }
+.reecoute-ecarter[aria-pressed="true"] { background: var(--info); border-color: var(--info); color: var(--cream); }
+.reecoute-raisons { display: flex; flex-direction: column; gap: 8px; max-width: 640px; margin-top: 12px; }
+.reecoute-raisons[hidden], .reecoute-autre[hidden] { display: none; }
+.reecoute-raisons-boutons { display: flex; flex-wrap: wrap; gap: 8px; }
+.reecoute-raison { height: 36px; padding: 0 14px; font-size: 13.5px; }
+.reecoute-raison[aria-pressed="true"] { background: var(--info); border-color: var(--info); color: var(--cream); }
+.reecoute-autre .form-input { font-size: 16px; }
+.reecoute-chiffre.is-ecartee .reecoute-chiffre-valeur { color: var(--info); }
 .reecoute-verdict { height: 56px; font-size: 18px; border-radius: 14px; border-width: 2px; }
 .reecoute-verdict.is-ok { color: var(--olive-deep); border-color: var(--olive-light); }
 .reecoute-verdict.is-pas-ok { color: var(--error); border-color: var(--error); }
@@ -1179,7 +1189,8 @@ button.day-arrow:hover:not(:disabled) { background: var(--surface-raised); }
   .reecoute-resume { grid-template-columns: 36px minmax(0, 1fr) auto; }
   .reecoute-resume-quand { display: none; }
   .reecoute-transcription { font-size: 24px; }
-  .reecoute-verdicts { max-width: none; }
+  .reecoute-verdicts { max-width: none; grid-template-columns: 1fr 1fr; }
+  .reecoute-ecarter { grid-column: 1 / -1; justify-self: start; }
   .reecoute-verdict { height: 64px; }
   .reecoute-suivante { align-self: stretch; }
 }

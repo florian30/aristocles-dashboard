@@ -2,7 +2,9 @@
    Aristocles — Page « Réécoute » (REECOUTE-VOIX lot 108, actions
    `reecoute_liste` et `reecoute_evaluer`, contrat-dashboard.md
    § 2.18-2.19). Florian réécoute chaque prise de voix gardée et la
-   note : OK / Pas OK, le bon texte si Pas OK, un commentaire.
+   note : OK / Pas OK, le bon texte si Pas OK, un commentaire ; ou
+   « À écarter » (lot 117) avec une raison (adulte, bruit ou vide,
+   autre + phrase libre) qui part dans `commentaire`.
    Ce module est PUR (testé sous Deno) : adaptateurs, filtres du
    hash, libellés, compteurs, raccourcis clavier. Le DOM est dans
    vues/reecoute.js.
@@ -33,7 +35,16 @@ export const LIBELLE_FILTRE_STT = {
 };
 
 export const PAR_PAGE = 50;
-export const VERDICTS = ['ok', 'pas_ok'];
+export const VERDICTS = ['ok', 'pas_ok', 'ecarter'];
+export const LIBELLE_VERDICT = { ok: 'OK', pas_ok: 'Pas OK', ecarter: 'Écartée' };
+
+// Raisons de « À écarter » (lot 117). Le libellé part tel quel dans
+// `commentaire` ; « autre » y ajoute la phrase libre : « autre : … ».
+export const RAISONS_ECARTER = [
+  { cle: 'adulte', libelle: 'adulte' },
+  { cle: 'bruit', libelle: 'bruit ou vide' },
+  { cle: 'autre', libelle: 'autre' },
+];
 export const LIMITE_TEXTE = 2000;
 
 const tableau = (v) => (Array.isArray(v) ? v : []);
@@ -46,7 +57,7 @@ export function adapterEvaluation(e) {
   if (!e || typeof e !== 'object' || !VERDICTS.includes(e.verdict)) return null;
   return {
     verdict: e.verdict,
-    bonTexte: e.verdict === 'pas_ok' ? texteOuNull(e.bon_texte) : null,
+    bonTexte: e.verdict === 'pas_ok' ? texteOuNull(e.bon_texte) : null, // ignoré en OK et en écartée
     commentaire: texteOuNull(e.commentaire),
     evalueLe: texteOuNull(e.evalue_le),
   };
@@ -79,7 +90,8 @@ function adapterPrise(p) {
 export function adapterReecouteListe(data) {
   const c = data.compteurs || {};
   return {
-    compteurs: { total: entier(c.total), evaluees: entier(c.evaluees), pasOk: entier(c.pas_ok) },
+    // `ecartees` (lot 116, additif) : absent d'une Edge d'avant → 0.
+    compteurs: { total: entier(c.total), evaluees: entier(c.evaluees), pasOk: entier(c.pas_ok), ecartees: entier(c.ecartees) },
     nbResultats: entier(data.nb_resultats),
     page: entier(data.page, 1),
     parPage: entier(data.par_page, PAR_PAGE),
@@ -134,8 +146,14 @@ export function fusionnerPrises(affichees, nouvelles) {
 // Ce qui part à `reecoute_evaluer`. Le bon texte n'a de sens qu'en
 // Pas OK ; laissé égal à la transcription (pré-remplissage), il n'apporte
 // rien : il part à null. Vide → null (le serveur fait pareil).
-export function paramsEvaluation(prise, { verdict, bonTexte, commentaire }) {
+// « À écarter » : seul le commentaire part, fait de la raison.
+export function paramsEvaluation(prise, { verdict, bonTexte, commentaire, raison, phraseAutre }) {
   const p = { prise_id: prise.priseId, verdict };
+  if (verdict === 'ecarter') {
+    const com = commentaireEcarter(raison, phraseAutre);
+    if (com) p.commentaire = com;
+    return p;
+  }
   const bon = (bonTexte || '').trim().replace(/\s+/g, ' ');
   const trans = prise.transcription.trim().replace(/\s+/g, ' ');
   if (verdict === 'pas_ok' && bon && bon !== trans) p.bon_texte = bon.slice(0, LIMITE_TEXTE);
@@ -144,13 +162,36 @@ export function paramsEvaluation(prise, { verdict, bonTexte, commentaire }) {
   return p;
 }
 
+// Texte de `commentaire` pour une prise écartée, ou null sans raison.
+export function commentaireEcarter(raison, phraseAutre) {
+  const r = RAISONS_ECARTER.find((x) => x.cle === raison);
+  if (!r) return null;
+  const phrase = r.cle === 'autre' ? (phraseAutre || '').trim().replace(/\s+/g, ' ') : '';
+  return (phrase ? r.libelle + ' : ' + phrase : r.libelle).slice(0, LIMITE_TEXTE);
+}
+
+// Inverse : la raison et la phrase d'une prise déjà écartée. Un texte
+// qui ne commence par aucune raison connue est lu comme « autre ».
+export function raisonDepuisCommentaire(commentaire) {
+  const c = (commentaire || '').trim();
+  if (!c) return { raison: null, phraseAutre: '' };
+  for (const r of RAISONS_ECARTER) {
+    if (r.cle !== 'autre' && c === r.libelle) return { raison: r.cle, phraseAutre: '' };
+  }
+  const m = /^autre(?:\s*:\s*(.*))?$/s.exec(c);
+  return { raison: 'autre', phraseAutre: m ? (m[1] || '') : c };
+}
+
 // Compteurs après une évaluation (sans recharger) : `avant` est
-// l'évaluation d'avant (null = prise pas encore notée).
+// l'évaluation d'avant (null = prise pas encore notée). Une prise
+// écartée compte dans les évaluées (une ligne de grille) et à part.
 export function compteursApres(c, avant, verdict) {
+  const delta = (v) => (verdict === v ? 1 : 0) - (avant && avant.verdict === v ? 1 : 0);
   return {
     total: c.total,
     evaluees: c.evaluees + (avant ? 0 : 1),
-    pasOk: c.pasOk + (verdict === 'pas_ok' ? 1 : 0) - (avant && avant.verdict === 'pas_ok' ? 1 : 0),
+    pasOk: c.pasOk + delta('pas_ok'),
+    ecartees: (c.ecartees || 0) + delta('ecarter'),
   };
 }
 
@@ -183,6 +224,7 @@ export function raccourci(e) {
   const k = String(e.key || '').toLowerCase();
   if (k === 'o') return 'ok';
   if (k === 'n') return 'pas_ok';
+  if (k === 'e') return 'ecarter';
   return null;
 }
 

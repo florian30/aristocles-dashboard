@@ -1,6 +1,7 @@
 /* ============================================================
    Mock des actions `reecoute_liste` et `reecoute_evaluer`
-   (REECOUTE-VOIX lot 107-108, contrat-dashboard.md § 2.18-2.19).
+   (REECOUTE-VOIX lot 107-108, contrat-dashboard.md § 2.18-2.19 ;
+   verdict `ecarter` et compteur `ecartees`, lot 116-117).
    Formes brutes de l'Edge. Comme retours.js, ce mock a un ÉTAT :
    une évaluation posée reste jusqu'au rechargement de la page.
 
@@ -97,6 +98,7 @@ export function creerReecouteMock({ maintenant = () => Date.now() } = {}) {
           total: prises.length,
           evaluees: prises.filter((p) => p.evaluation).length,
           pas_ok: prises.filter((p) => p.evaluation?.verdict === 'pas_ok').length,
+          ecartees: prises.filter((p) => p.evaluation?.verdict === 'ecarter').length,
         },
         nb_resultats: filtrees.length,
         page,
@@ -114,7 +116,7 @@ export function creerReecouteMock({ maintenant = () => Date.now() } = {}) {
 
     reecoute_evaluer(params = {}) {
       if (typeof params.prise_id !== 'string' || !UUID.test(params.prise_id)) throw new ApiError("'prise_id' is required and must be a uuid", 400);
-      if (!['ok', 'pas_ok'].includes(params.verdict)) throw new ApiError("'verdict' must be one of 'ok', 'pas_ok'", 400);
+      if (!['ok', 'pas_ok', 'ecarter'].includes(params.verdict)) throw new ApiError("'verdict' must be one of 'ok', 'pas_ok', 'ecarter'", 400);
       for (const champ of ['bon_texte', 'commentaire']) {
         const v = params[champ];
         if (v != null && (typeof v !== 'string' || v.length > 2000)) throw new ApiError("'" + champ + "' must be a string of at most 2000 characters", 400);
@@ -124,7 +126,7 @@ export function creerReecouteMock({ maintenant = () => Date.now() } = {}) {
       const net = (v) => (typeof v === 'string' && v.trim() ? v.trim().replace(/\s+/g, ' ') : null);
       p.evaluation = {
         verdict: params.verdict,
-        bon_texte: params.verdict === 'ok' ? null : net(params.bon_texte),
+        bon_texte: params.verdict === 'pas_ok' ? net(params.bon_texte) : null,
         commentaire: typeof params.commentaire === 'string' && params.commentaire.trim() ? params.commentaire.trim() : null,
         evalue_le: new Date(maintenant()).toISOString(),
       };

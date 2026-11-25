@@ -11,7 +11,13 @@
      transcription) et un commentaire ; enregistré à la sortie de
      chaque champ ; Entrée dans le commentaire ou « Suivante » passe
      à la carte suivante.
-   Raccourcis (hors champ de saisie) : Espace écouter, O OK, N Pas OK.
+   · À écarter (lot 117, bouton plus petit) : choix de la raison
+     (adulte, bruit ou vide, autre + phrase libre) ; la raison part
+     dans `commentaire`. Adulte et bruit enregistrent tout de suite et
+     ouvrent la carte suivante ; « autre » enregistre à la sortie du
+     champ, Entrée passe à la suivante. Comptées à part en tête.
+   Raccourcis (hors champ de saisie) : Espace écouter, O OK, N Pas OK,
+   E À écarter.
    L'audio de la carte ouverte et celui de la suivante sont préchargés.
    Les URLs signées (1 h) ne sont ni affichées, ni en cache, ni dans le
    hash ; un lecteur qui ne charge plus fait proposer « Recharger les
@@ -26,8 +32,9 @@ import { pluriel } from '../ui/format.js';
 import { fmtInstantParis, heureParis } from '../ui/paris.js';
 import {
   compteursApres, filtresDepuisQuery, fusionnerPrises, indexInitial, indexSuivant, LIBELLE_FILTRE_STT, LIBELLE_MODE_REECOUTE,
-  libelleContexte, LIMITE_TEXTE, messageErreurReecoute, MODES_REECOUTE, optionsContexte, pageSuivante, paramsEvaluation,
-  paramsListe, progression, queryDepuisFiltres, raccourci, texteReponseAttendue,
+  LIBELLE_VERDICT, libelleContexte, LIMITE_TEXTE, messageErreurReecoute, MODES_REECOUTE, optionsContexte, pageSuivante,
+  paramsEvaluation, paramsListe, progression, queryDepuisFiltres, raccourci, RAISONS_ECARTER, raisonDepuisCommentaire,
+  texteReponseAttendue,
 } from '../ui/reecoute.js';
 
 export const titre = 'Réécoute';
@@ -67,7 +74,7 @@ class Page {
     this.majLot(premier);
     this.pagesChargees = [premier.page];
     this.actif = null;
-    this.brouillons = new Map(); // priseId → { verdict, bonTexte, commentaire }
+    this.brouillons = new Map(); // priseId → { verdict, bonTexte, commentaire, raison, phraseAutre }
     this.envoyes = new Map(); // priseId → JSON des derniers params enregistrés
     this.files = new Map(); // priseId → Promise (enregistrements à la suite)
     this.audios = new Map(); // priseId → <audio> préchargé
@@ -77,10 +84,10 @@ class Page {
     const vue = el('div', 'vue vue-reecoute');
     vue.append(entetePage(premier.nbResultats));
     vue.append(el('p', 'bloc-explication',
-      'Chaque prise de voix gardée, de la plus ancienne à la plus récente. Écoutez, puis OK si la machine a bien écrit ce que l’enfant a dit, Pas OK sinon. La grille part tout de suite ; la carte suivante s’ouvre.'));
+      'Chaque prise de voix gardée, de la plus ancienne à la plus récente. Écoutez, puis OK si la machine a bien écrit ce que l’enfant a dit, Pas OK sinon. « À écarter » sort de la mesure une prise qui n’est pas l’enfant (adulte, bruit ou vide, autre). La grille part tout de suite ; la carte suivante s’ouvre.'));
     this.avancement = el('section', 'reecoute-avancement');
     vue.append(this.avancement, this.blocFiltres());
-    const aide = el('p', 'reecoute-aide', 'Clavier : Espace écouter · O OK · N Pas OK · Entrée dans le commentaire : suivante');
+    const aide = el('p', 'reecoute-aide', 'Clavier : Espace écouter · O OK · N Pas OK · E À écarter · Entrée dans le commentaire : suivante');
     this.annonce = el('p', 'reecoute-annonce');
     this.annonce.setAttribute('role', 'status');
     this.annonce.setAttribute('aria-live', 'polite');
@@ -107,7 +114,8 @@ class Page {
       b.append(el('span', 'reecoute-chiffre-valeur', String(valeur)), el('span', 'eyebrow', libelle));
       return b;
     };
-    chiffres.append(chiffre('Prises gardées', c.total), chiffre('Évaluées', c.evaluees), chiffre('Pas OK', c.pasOk, c.pasOk ? 'is-pas-ok' : ''));
+    chiffres.append(chiffre('Prises gardées', c.total), chiffre('Évaluées', c.evaluees), chiffre('Pas OK', c.pasOk, c.pasOk ? 'is-pas-ok' : ''),
+      chiffre('Écartées', c.ecartees || 0, 'is-ecartee'));
     const barre = el('div', 'reecoute-barre');
     barre.setAttribute('role', 'progressbar');
     barre.setAttribute('aria-valuemin', '0');
@@ -424,23 +432,53 @@ class Page {
   // ---------- Grille ----------
 
   grille(p, carte) {
+    const ecartee = p.evaluation?.verdict === 'ecarter';
     const brouillon = this.brouillons.get(p.priseId) || {
       verdict: p.evaluation?.verdict || null,
       bonTexte: p.evaluation?.bonTexte ?? p.transcription,
-      commentaire: p.evaluation?.commentaire || '',
+      commentaire: ecartee ? '' : p.evaluation?.commentaire || '',
+      ...(ecartee ? raisonDepuisCommentaire(p.evaluation.commentaire) : { raison: null, phraseAutre: '' }),
     };
     this.brouillons.set(p.priseId, brouillon);
     const bloc = el('div', 'reecoute-grille');
     const boutons = el('div', 'reecoute-verdicts');
     const ok = el('button', 'bouton reecoute-verdict is-ok', 'OK');
     const pasOk = el('button', 'bouton reecoute-verdict is-pas-ok', 'Pas OK');
-    for (const [b, v] of [[ok, 'ok'], [pasOk, 'pas_ok']]) {
+    const ecarter = el('button', 'bouton reecoute-ecarter', 'À écarter');
+    for (const [b, v] of [[ok, 'ok'], [pasOk, 'pas_ok'], [ecarter, 'ecarter']]) {
       b.type = 'button';
       b.dataset.verdict = v;
       b.setAttribute('aria-pressed', String(brouillon.verdict === v));
     }
-    boutons.append(ok, pasOk);
+    boutons.append(ok, pasOk, ecarter);
     bloc.append(boutons);
+
+    // Choix de la raison de « À écarter ».
+    const raisons = el('div', 'reecoute-raisons');
+    raisons.hidden = brouillon.verdict !== 'ecarter';
+    raisons.setAttribute('role', 'group');
+    raisons.setAttribute('aria-label', 'Raison de l’écart');
+    raisons.append(el('span', 'form-label', 'Pourquoi l’écarter ?'));
+    const ligneRaisons = el('div', 'reecoute-raisons-boutons');
+    const boutonsRaison = RAISONS_ECARTER.map((r) => {
+      const b = el('button', 'bouton bouton-filtre reecoute-raison', r.libelle);
+      b.type = 'button';
+      b.dataset.raison = r.cle;
+      b.setAttribute('aria-pressed', String(brouillon.raison === r.cle));
+      ligneRaisons.append(b);
+      return b;
+    });
+    raisons.append(ligneRaisons);
+    const champAutre = el('label', 'form-champ reecoute-autre');
+    const autre = el('input', 'form-input reecoute-phrase-autre');
+    autre.type = 'text';
+    autre.maxLength = LIMITE_TEXTE;
+    autre.value = brouillon.phraseAutre || '';
+    autre.setAttribute('enterkeyhint', 'next');
+    champAutre.append(el('span', 'form-label', 'Autre : en une phrase'), autre);
+    champAutre.hidden = brouillon.raison !== 'autre';
+    raisons.append(champAutre);
+    bloc.append(raisons);
 
     const champs = el('div', 'reecoute-champs');
     champs.hidden = brouillon.verdict !== 'pas_ok';
@@ -468,22 +506,23 @@ class Page {
     carte.statut.textContent = p.evaluation ? texteEnregistre(p.evaluation) : '';
     carte.statut.className = 'reecoute-statut' + (p.evaluation ? ' is-enregistre' : '');
     bloc.append(carte.statut);
-    carte.boutons = { ok, pasOk, bon, com };
+    carte.boutons = { ok, pasOk, ecarter, bon, com, autre, raisons: boutonsRaison };
 
     const marquer = (v) => {
       ok.setAttribute('aria-pressed', String(v === 'ok'));
       pasOk.setAttribute('aria-pressed', String(v === 'pas_ok'));
+      ecarter.setAttribute('aria-pressed', String(v === 'ecarter'));
+      champs.hidden = v !== 'pas_ok';
+      raisons.hidden = v !== 'ecarter';
     };
     ok.addEventListener('click', async () => {
       brouillon.verdict = 'ok';
       marquer('ok');
-      champs.hidden = true;
       if (await this.enregistrer(p, brouillon)) this.suivante(p);
     });
     pasOk.addEventListener('click', () => {
       brouillon.verdict = 'pas_ok';
       marquer('pas_ok');
-      champs.hidden = false;
       carte.statut.className = 'reecoute-statut';
       carte.statut.textContent = 'Pas OK : corrigez le texte. L’enregistrement part à la sortie du champ.';
       bon.focus();
@@ -510,6 +549,36 @@ class Page {
       lire();
       if (await this.enregistrer(p, brouillon)) this.suivante(p);
     });
+
+    // « À écarter » : rien ne part tant qu'aucune raison n'est choisie.
+    ecarter.addEventListener('click', () => {
+      brouillon.verdict = 'ecarter';
+      marquer('ecarter');
+      carte.statut.className = 'reecoute-statut';
+      carte.statut.textContent = 'À écarter : choisissez la raison.';
+      (boutonsRaison.find((b) => b.dataset.raison === brouillon.raison) || boutonsRaison[0]).focus();
+    });
+    for (const b of boutonsRaison) {
+      b.addEventListener('click', async () => {
+        brouillon.raison = b.dataset.raison;
+        for (const x of boutonsRaison) x.setAttribute('aria-pressed', String(x === b));
+        champAutre.hidden = brouillon.raison !== 'autre';
+        if (brouillon.raison === 'autre') {
+          autre.focus();
+          if (await this.enregistrer(p, brouillon)) carte.statut.textContent = texteEnregistre(p.evaluation) + ' · précisez en une phrase ; Entrée : suivante';
+          return;
+        }
+        if (await this.enregistrer(p, brouillon)) this.suivante(p);
+      });
+    }
+    autre.addEventListener('input', () => { brouillon.phraseAutre = autre.value; });
+    autre.addEventListener('blur', () => { brouillon.phraseAutre = autre.value; this.enregistrer(p, brouillon); });
+    autre.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      brouillon.phraseAutre = autre.value;
+      if (await this.enregistrer(p, brouillon)) this.suivante(p);
+    });
     return bloc;
   }
 
@@ -524,7 +593,7 @@ class Page {
   }
 
   async envoyer(p, brouillon) {
-    if (!brouillon.verdict) return false;
+    if (!brouillon.verdict || (brouillon.verdict === 'ecarter' && !brouillon.raison)) return false;
     const params = paramsEvaluation(p, brouillon);
     const cle = JSON.stringify(params);
     if (this.envoyes.get(p.priseId) === cle) return true;
@@ -540,7 +609,7 @@ class Page {
       this.majAvancement();
       carte.statut.className = 'reecoute-statut is-enregistre';
       carte.statut.textContent = texteEnregistre(p.evaluation);
-      this.annonce.textContent = 'Prise ' + p.numero + ' enregistrée : ' + (r.verdict === 'ok' ? 'OK' : 'Pas OK') + '.';
+      this.annonce.textContent = 'Prise ' + p.numero + ' enregistrée : ' + libelleEvaluation(p.evaluation) + '.';
       if (!carte.noeud.classList.contains('is-open')) this.rendreFermee(p);
       return true;
     } catch (e) {
@@ -590,15 +659,24 @@ class Page {
       carte.boutons?.ok.click();
     } else if (action === 'pas_ok') {
       carte.boutons?.pasOk.click();
+    } else if (action === 'ecarter') {
+      carte.boutons?.ecarter.click();
     }
   }
 }
 
 function chipEvaluation(ev) {
   if (!ev) return el('span', 'chip is-muted', 'à écouter');
+  if (ev.verdict === 'ecarter') return el('span', 'chip is-info', 'Écartée');
   return ev.verdict === 'ok' ? el('span', 'chip is-success', 'OK') : el('span', 'chip is-failure', 'Pas OK');
 }
 
+// « OK », « Pas OK », « Écartée (adulte) ».
+function libelleEvaluation(ev) {
+  const base = LIBELLE_VERDICT[ev.verdict] || ev.verdict;
+  return ev.verdict === 'ecarter' && ev.commentaire ? base + ' (' + ev.commentaire + ')' : base;
+}
+
 function texteEnregistre(ev) {
-  return 'Enregistré · ' + (ev.verdict === 'ok' ? 'OK' : 'Pas OK') + (ev.evalueLe ? ' · ' + heureParis(ev.evalueLe) : '');
+  return 'Enregistré · ' + libelleEvaluation(ev) + (ev.evalueLe ? ' · ' + heureParis(ev.evalueLe) : '');
 }
