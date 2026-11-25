@@ -19,6 +19,7 @@ import * as vueEnfant from './vues/enfant.js';
 import * as vueFamilles from './vues/familles.js';
 import * as vueIncidents from './vues/incidents.js';
 import * as vueMessages from './vues/messages.js';
+import * as vueReecoute from './vues/reecoute.js';
 import * as vueRetours from './vues/retours.js';
 import * as vueSante from './vues/sante.js';
 import * as vueSeance from './vues/seance.js';
@@ -45,6 +46,7 @@ const NAVIGATION = [
   { vue: 'incidents', libelle: 'Incidents' },
   { vue: 'messages', libelle: 'Messages' },
   { vue: 'retours', libelle: 'Retours' },
+  { vue: 'reecoute', libelle: 'Réécoute' },
 ];
 
 const racine = document.getElementById('racine');
@@ -64,7 +66,7 @@ let internesActif = false; // interrupteur « Comptes de test internes » (ui/in
 function vuePour(route) {
   if (route.vue === 'seances') return route.generationId ? vueTour : route.sessionId ? vueSeance : vueSeances;
   if (route.vue === 'familles' && route.childId) return vueEnfant;
-  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents, messages: vueMessages, retours: vueRetours }[route.vue];
+  return { veille: vueVeille, apercu: vueApercu, familles: vueFamilles, sante: vueSante, incidents: vueIncidents, messages: vueMessages, retours: vueRetours, reecoute: vueReecoute }[route.vue];
 }
 
 // ---------- Rendu d'une route ----------

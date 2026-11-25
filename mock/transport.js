@@ -13,6 +13,7 @@ import { journee } from './journee.js';
 import { photo } from './photo.js';
 import { photos_seance } from './photos_seance.js';
 import { questions_ari } from './questions_ari.js';
+import { creerReecouteMock } from './reecoute.js';
 import { creerRetoursMock } from './retours.js';
 import { sante } from './sante.js';
 import { session } from './session.js';
@@ -36,11 +37,12 @@ function attendre(ms, signal) {
 }
 
 // L'Edge `notifs_console` factice a un état (campagnes, messages), comme
-// les retours parents (statut) : un par transport, donc par chargement.
+// les retours parents (statut) et la réécoute (évaluations) : un par transport, donc par chargement.
 export function transportMock({
   estConnecte, estAutorise, delaiMs = 250, console: consoleMock = creerConsoleMock(), retours: retoursMock = creerRetoursMock(),
+  reecoute: reecouteMock = creerReecouteMock(),
 }) {
-  const actions = { ...ACTIONS, ...retoursMock };
+  const actions = { ...ACTIONS, ...retoursMock, ...reecouteMock };
   return async (env, action, params = {}, { signal, edge = 'dashboard' } = {}) => {
     await attendre(delaiMs, signal);
     if (!estConnecte(env)) throw new ApiError('Jeton absent ou invalide.', 401);

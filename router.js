@@ -12,6 +12,8 @@
    #/{env}/retours            #/{env}/retours/{retour_id}
                               (retours parents « Votre avis », AVIS-3 ;
                                ?statut=nouveau|lu|inscrit|clos)
+   #/{env}/reecoute           (réécoute des prises de voix, lot 108 ;
+                               ?tout=1&mode=…&contexte=…)
    Une query optionnelle (`?from=…&to=…&child=…`) porte les filtres
    des écrans de liste, pour qu'un rafraîchissement les conserve ;
    `tri=…&sens=asc|desc` le tri de Familles, `internes=1` l'interrupteur
@@ -24,7 +26,7 @@
 import { ENV_PAR_DEFAUT, estEnvValide } from './config.js';
 import { estDateCivile } from './ui/paris.js';
 
-export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents', 'messages', 'retours'];
+export const VUES = ['veille', 'apercu', 'familles', 'seances', 'sante', 'incidents', 'messages', 'retours', 'reecoute'];
 
 // Route : { env, vue, date?, childId?, sessionId?, generationId?, retourId?, query }
 // `canonique` vaut false quand le hash d'origine doit être réécrit

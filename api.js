@@ -51,6 +51,11 @@
    retourStatut(env, retourId, statut, refRegistre?) → { id, statut,
      refRegistre } ; la seule écriture de l'Edge `dashboard`, hors cache,
      et elle vide le cache de l'env (liste et pastille à jour)
+   reecouteListe(env, params) → voir adapterReecouteListe (ui/reecoute.js,
+     contrat § 2.18 : toutes les prises de voix gardées, page par page),
+     JAMAIS mis en cache (URLs signées d'1 h)
+   reecouteEvaluer(env, params) → { priseId, verdict, bonTexte,
+     commentaire, evalueLe } (§ 2.19, écriture, hors cache)
    console.* → Edge `notifs_console` (rubrique Messages), JAMAIS en
      cache : écritures, envois, et des lectures qui doivent être fraîches.
      Formes de l'Edge rendues telles quelles (snake_case), complétées des
@@ -66,6 +71,7 @@ import { bornesParis, heureParis } from './ui/paris.js';
 import { adapterLlm } from './ui/unites.js';
 import { adapterTourDeroule } from './ui/deroule.js';
 import { adapterReponsesExercices } from './ui/reponses.js';
+import { adapterEvaluation, adapterReecouteListe } from './ui/reecoute.js';
 
 export class ApiError extends Error {
   constructor(message, status, donnees = null) {
@@ -1209,6 +1215,15 @@ export function creerApi({ transport, cache = creerCache() }) {
       const r = await transport(env, 'retour_statut', params, options);
       cache.viderEnv(env);
       return { id: r.id, statut: statutRetour(r.statut), refRegistre: r.ref_registre || null };
+    },
+    // Hors cache : les liens d'écoute expirent en 1 h (`expireLe`).
+    async reecouteListe(env, params, options = {}) {
+      return adapterReecouteListe(await transport(env, 'reecoute_liste', params, options));
+    },
+    // Écriture : remplace toute la grille de la prise. 404 propagé (prise purgée).
+    async reecouteEvaluer(env, params, options = {}) {
+      const r = await transport(env, 'reecoute_evaluer', params, options);
+      return { priseId: r.prise_id || params.prise_id, ...adapterEvaluation(r) };
     },
     console: creerConsole(transport),
     viderCache(env) {
